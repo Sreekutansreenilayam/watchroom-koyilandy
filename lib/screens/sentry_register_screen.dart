@@ -234,8 +234,61 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
 
   Future<void> _saveRegister() async {
     if (_register == null) return;
+
+    final manProvider = context.read<ManpowerProvider>();
+    final sentryProvider = context.read<SentryProvider>();
+    final attProvider = context.read<AttendanceProvider>();
+
+    final eligiblePersonnel = manProvider.getActivePersonnelForDate(_selectedDate).where((p) {
+      if (!['FRO', 'KHG', 'Trainees'].contains(p.designation)) return false;
+      if (sentryProvider.globalExemptions.any((e) => e.personnelId == p.idNumber)) return false;
+      if (_register!.exemptions.contains(p.idNumber)) return false;
+      
+      final att = attProvider.attendanceMap[p.id];
+      final status = att?.dailyStatus[_selectedDate.day];
+      return (status == 'X' || status == null || status.isEmpty || status.toUpperCase() == 'X/R');
+    }).toList();
+
+    List<String> unassignedNames = [];
+    for (var p in eligiblePersonnel) {
+        bool inSlot = _register!.slots.any((s) => s.personnelId == p.idNumber || s.replacementPersonnelId == p.idNumber);
+        bool inSpares = _register!.spares.contains(p.idNumber);
+        if (!inSlot && !inSpares) {
+            unassignedNames.add("${p.name} (${p.idNumber})");
+        }
+    }
+
+    if (unassignedNames.isNotEmpty) {
+        bool? proceed = await showDialog<bool>(
+           context: context,
+           builder: (context) => AlertDialog(
+              backgroundColor: Colors.grey[900],
+              title: const Center(child: Text('മുന്നറിയിപ്പ്', style: TextStyle(color: Colors.orange))),
+              content: Text(
+                 'താഴെ പറയുന്നവരെ ഡ്യൂട്ടിയിലോ സ്പെയറിലോ ഉൾപ്പെടുത്തിയിട്ടില്ല:\n\n'
+                 '${unassignedNames.join('\n')}\n\n'
+                 'ഇവരെ ഒഴിവാക്കി സേവ് ചെയ്യണമെന്നുറപ്പാണോ?',
+                 textAlign: TextAlign.center,
+                 style: const TextStyle(color: Colors.white),
+              ),
+              actionsAlignment: MainAxisAlignment.spaceBetween,
+              actions: [
+                 TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel', style: TextStyle(color: Colors.blueAccent)),
+                 ),
+                 TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Save Anyway', style: TextStyle(color: Colors.redAccent)),
+                 ),
+              ]
+           )
+        );
+        if (proceed != true) return;
+    }
+
     setState(() => _isLoading = true);
-    final success = await context.read<SentryProvider>().saveSentryRegister(
+    final success = await sentryProvider.saveSentryRegister(
       _register!,
     );
     setState(() => _isLoading = false);
@@ -247,35 +300,37 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
     }
   }
 
-  Future<void> _confirmPreviousDuty() async {
-    final sentryProvider = context.read<SentryProvider>();
-    final allRegsSorted = List<SentryRegisterModel>.from(
-      sentryProvider.registers,
-    )..sort((a, b) => b.date.compareTo(a.date));
-
-    final prevReg = allRegsSorted
-        .where((r) => r.date.isBefore(DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day)))
-        .firstOrNull;
-
-    if (prevReg != null) {
-      await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SentryConfirmationDialog(register: prevReg),
-        ),
-      );
-      // Reload registers after potential confirmation
-      await sentryProvider.fetchSentryRegisters();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Previous duty check complete')));
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No previous duty found to confirm.')));
-    }
-  }
-
   Future<void> _autoFill() async {
     if (_register == null) return;
+    
+    bool hasAssignments = _register!.slots.any((s) => s.personnelId.isNotEmpty);
+    if (hasAssignments) {
+      bool? confirmOverwrite = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Center(child: Text('മുന്നറിയിപ്പ്', style: TextStyle(color: Colors.orange))),
+          content: const Text(
+            'ഈ ദിവസത്തെ ഡ്യൂട്ടികൾ നൽകിക്കഴിഞ്ഞു, ഇത് മാറ്റി പുതിയത് ഉണ്ടാക്കണോ?',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white),
+          ),
+          actionsAlignment: MainAxisAlignment.spaceBetween,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Overwrite', style: TextStyle(color: Colors.redAccent)),
+            ),
+          ],
+        ),
+      );
+      if (confirmOverwrite != true) return;
+    }
+
     final attProvider = context.read<AttendanceProvider>();
     final manProvider = context.read<ManpowerProvider>();
     final sentryProvider = context.read<SentryProvider>();
@@ -288,12 +343,8 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
     final prevReg = allRegsSorted
         .where((r) => r.date.isBefore(DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day)))
         .firstOrNull;
-    if (prevReg != null && !prevReg.isConfirmed) {
-      // Auto-triggering confirmation only if it's the very first time (handled via _confirmPreviousDuty manually now or automatically if needed)
-      // We will let _autoFill just do the autofill, and let the user click the button to confirm previous duties if they missed it.
-      // Wait, the user still wants the auto-prompt if it's unconfirmed? 
-      // The user said: "the confirm previous day duty only visible while in first time cliking , this need to every time (auto buttun)"
-      // So we'll keep the auto-prompt for unconfirmed, but ALSO add a manual button.
+    if (prevReg != null) {
+      // Always auto-trigger confirmation when Auto Generate is clicked.
       final confirmed = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
@@ -342,11 +393,53 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
     SentryRegisterModel? regDBY =
         dateToReg[DateFormat('yyyy-MM-dd').format(dby)];
 
+    bool didPersonGetCreditForSlot(SentryRegisterModel? reg, int slotIdx, String id) {
+      if (reg == null) return false;
+      if (slotIdx < 0 || slotIdx >= reg.slots.length) return false;
+      final slot = reg.slots[slotIdx];
+      if (slot.segments != null && slot.segments!.isNotEmpty) {
+         for (var seg in slot.segments!) {
+            if (seg.personnelId == id) {
+                try {
+                    final startDt = DateFormat('HH:mm').parse(seg.startTime);
+                    var endDt = DateFormat('HH:mm').parse(seg.endTime);
+                    if (endDt.isBefore(startDt) || endDt.isAtSameMomentAs(startDt)) endDt = endDt.add(const Duration(days: 1));
+                    if (endDt.difference(startDt).inMinutes >= 30) {
+                        return true;
+                    }
+                } catch(_) {}
+            }
+         }
+      } else {
+         if (slot.personnelId == id) {
+             if (slot.isBroken && slot.brokenTime != null) {
+                 try {
+                     final parts = slot.timeLabel.split(' - ');
+                     final startDt = DateFormat('HH:mm').parse(parts[0].trim());
+                     var endDt = DateFormat('HH:mm').parse(slot.brokenTime!);
+                     if (endDt.isBefore(startDt) || endDt.isAtSameMomentAs(startDt)) endDt = endDt.add(const Duration(days: 1));
+                     if (endDt.difference(startDt).inMinutes >= 30) return true;
+                 } catch(_) {}
+             } else {
+                 return true;
+             }
+         } else if (slot.replacementPersonnelId == id && slot.brokenTime != null) {
+             try {
+                 final parts = slot.timeLabel.split(' - ');
+                 final startDt = DateFormat('HH:mm').parse(slot.brokenTime!);
+                 var endDt = DateFormat('HH:mm').parse(parts[1].trim());
+                 if (endDt.isBefore(startDt) || endDt.isAtSameMomentAs(startDt)) endDt = endDt.add(const Duration(days: 1));
+                 if (endDt.difference(startDt).inMinutes >= 30) return true;
+             } catch(_) {}
+         }
+      }
+      return false;
+    }
+
     int getSlotForPerson(SentryRegisterModel? reg, String id) {
       if (reg == null) return -1;
       for (int i = 0; i < reg.slots.length; i++) {
-        if (reg.slots[i].personnelId == id) return i;
-        if (reg.slots[i].replacementPersonnelId == id) return i;
+        if (didPersonGetCreditForSlot(reg, i, id)) return i;
       }
       return -1;
     }
@@ -375,9 +468,8 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
           int lastDutySlotToday = -1;
 
           for (int idx = 0; idx < reg.slots.length; idx++) {
-            final slot = reg.slots[idx];
-            if (slot.personnelId == p.idNumber || slot.replacementPersonnelId == p.idNumber) {
-              lastDutySlotToday = idx;
+            if (didPersonGetCreditForSlot(reg, idx, p.idNumber)) {
+              if (lastDutySlotToday == -1) lastDutySlotToday = idx;
               if (idx == 8 || idx == 9) didRedToday = true;
               if (idx == 7 || idx == 10) didGreenToday = true;
             }
@@ -413,18 +505,20 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
             if (didRedToday && diff < daysSinceLastRed) {
               daysSinceLastRed = diff;
               if (lastRedSlot == -1) {
-                int slot = getSlotForPerson(reg, p.idNumber);
-                if (slot == 8 || slot == 9) {
-                  lastRedSlot = slot;
+                if (didPersonGetCreditForSlot(reg, 8, p.idNumber)) {
+                  lastRedSlot = 8;
+                } else if (didPersonGetCreditForSlot(reg, 9, p.idNumber)) {
+                  lastRedSlot = 9;
                 }
               }
             }
             if (didGreenToday && diff < daysSinceLastGreen) {
               daysSinceLastGreen = diff;
               if (lastGreenSlot == -1) {
-                int slot = getSlotForPerson(reg, p.idNumber);
-                if (slot == 7 || slot == 10) {
-                  lastGreenSlot = slot;
+                if (didPersonGetCreditForSlot(reg, 7, p.idNumber)) {
+                  lastGreenSlot = 7;
+                } else if (didPersonGetCreditForSlot(reg, 10, p.idNumber)) {
+                  lastGreenSlot = 10;
                 }
               }
             }
@@ -559,9 +653,7 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
         int daysSinceLastRed = personStats[id]!['daysSinceLastRed'];
         
         if (daysSinceLastGreen <= 2) {
-            if (daysSinceLastRed < 15) {
-                return false; // Excluded due to Green->Red cool-off
-            }
+            return false; // Excluded due to Green->Red cool-off
         }
         
         return true;
@@ -873,11 +965,13 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.grey[900],
-        title: const Text('Unsaved Changes', style: TextStyle(color: Colors.white)),
+        title: const Center(child: Text('സേവ് ചെയ്യാത്ത മാറ്റങ്ങൾ', style: TextStyle(color: Colors.white))),
         content: const Text(
-          'You have unsaved changes. Do you really want to exit without saving?',
+          'സേവ് ചെയ്യാത്ത മാറ്റങ്ങളുണ്ട്.\nസേവ് ചെയ്യാതെ പുറത്ത് പോകണമെന്നുറപ്പാണോ?',
+          textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white70),
         ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -981,17 +1075,6 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
             tooltip: 'History',
           ),
           IconButton(
-            icon: const Icon(Icons.check_circle_outline, color: Colors.greenAccent),
-            onPressed: _confirmPreviousDuty,
-            tooltip: 'Confirm Previous Duty',
-          ),
-          IconButton(
-            icon: const Icon(Icons.auto_awesome, color: Colors.orange),
-            onPressed: _autoFill,
-            tooltip: 'Auto Fill',
-          ),
-
-          IconButton(
             icon: const Icon(Icons.save, color: Colors.blue),
             onPressed: _saveRegister,
           ),
@@ -1031,6 +1114,21 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _autoFill,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Auto Generate Duties', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1343,6 +1441,8 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
                         onTap: () {
                           _saveState();
                           setState(() {
+                            _register!.spares.remove(p.idNumber);
+                            
                             _register!.slots[slotIndex] = SentrySlot(
                               timeLabel: _register!.slots[slotIndex].timeLabel,
                               personnelId: p.idNumber,

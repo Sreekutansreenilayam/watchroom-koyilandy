@@ -1,11 +1,40 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+class SentryDutySegment {
+  final String personnelId;
+  final String startTime; // "09:00"
+  final String endTime;   // "11:00"
+
+  SentryDutySegment({
+    required this.personnelId,
+    required this.startTime,
+    required this.endTime,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'personnelId': personnelId,
+      'startTime': startTime,
+      'endTime': endTime,
+    };
+  }
+
+  factory SentryDutySegment.fromMap(Map<String, dynamic> map) {
+    return SentryDutySegment(
+      personnelId: map['personnelId'] ?? '',
+      startTime: map['startTime'] ?? '',
+      endTime: map['endTime'] ?? '',
+    );
+  }
+}
+
 class SentrySlot {
-  final String timeLabel; // e.g., "09:00 AM - 11:00 AM"
+  final String timeLabel; // e.g., "09:00 - 11:00"
   final String personnelId; // idNumber of the assigned person
   final bool isBroken;
   final String? brokenTime;
   final String? replacementPersonnelId;
+  final List<SentryDutySegment>? segments;
 
   SentrySlot({
     required this.timeLabel,
@@ -13,6 +42,7 @@ class SentrySlot {
     this.isBroken = false,
     this.brokenTime,
     this.replacementPersonnelId,
+    this.segments,
   });
 
   Map<String, dynamic> toMap() {
@@ -22,16 +52,22 @@ class SentrySlot {
       'isBroken': isBroken,
       'brokenTime': brokenTime,
       'replacementPersonnelId': replacementPersonnelId,
+      'segments': segments?.map((s) => s.toMap()).toList(),
     };
   }
 
   factory SentrySlot.fromMap(Map<String, dynamic> map) {
+    List<SentryDutySegment>? segmentsList;
+    if (map['segments'] != null) {
+      segmentsList = (map['segments'] as List).map((s) => SentryDutySegment.fromMap(s as Map<String, dynamic>)).toList();
+    }
     return SentrySlot(
       timeLabel: map['timeLabel'] ?? '',
       personnelId: map['personnelId'] ?? '',
       isBroken: map['isBroken'] ?? false,
       brokenTime: map['brokenTime'],
       replacementPersonnelId: map['replacementPersonnelId'],
+      segments: segmentsList,
     );
   }
 }

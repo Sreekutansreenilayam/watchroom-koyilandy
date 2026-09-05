@@ -330,4 +330,12 @@ class AccessControl {
     }
     return assignedVehicles;
   }
+
+  static String? getAssignedVehicleId(BuildContext context, DateTime targetDate) {
+    final vehicles = getAssignedVehicles(context, targetDate);
+    if (vehicles.isNotEmpty) {
+      return vehicles.first;
+    }
+    return null;
+  }
 }

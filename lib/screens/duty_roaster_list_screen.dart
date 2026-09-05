@@ -110,6 +110,7 @@ class _DutyRoasterListScreenState extends State<DutyRoasterListScreen> {
                                     startDate: interval['startDate'],
                                     endDate: interval['endDate'],
                                     title: interval['title'],
+                                    allRegisters: context.read<DutyProvider>().registers,
                                   ),
                                 ),
                               );

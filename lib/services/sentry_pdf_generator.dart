@@ -278,35 +278,74 @@ class SentryPdfGenerator {
         spareDuties[day] = List.from(reg.spares);
 
         for (var slot in reg.slots) {
-          if (slot.personnelId.isEmpty) continue;
+          if (slot.segments != null && slot.segments!.isNotEmpty) {
+             for (var seg in slot.segments!) {
+                try {
+                   final startDt = DateFormat('HH:mm').parse(seg.startTime);
+                   var endDt = DateFormat('HH:mm').parse(seg.endTime);
+                   if (endDt.isBefore(startDt) || endDt.isAtSameMomentAs(startDt)) {
+                       endDt = endDt.add(const Duration(days: 1));
+                   }
+                   if (endDt.difference(startDt).inMinutes >= 30) {
+                       final startStr = seg.startTime.split(':')[0];
+                       final endStr = seg.endTime.split(':')[0];
+                       String shortSegLabel = '$startStr-$endStr';
+                       String compositeLabel = '$shortSegLabel|${slot.timeLabel}';
 
-          bool originalGetsCredit = true;
-          if (slot.isBroken) {
-            int diffMins = 0;
-            try {
-              final startStr = slot.timeLabel.split(' - ')[0];
-              final startDt = DateFormat('HH:mm').parse(startStr);
-              final breakDt = DateFormat('HH:mm').parse(slot.brokenTime!);
-              diffMins = breakDt.difference(startDt).inMinutes;
-              if (diffMins < 0) diffMins += 24 * 60;
-            } catch (e) {}
-            if (diffMins < 30) originalGetsCredit = false;
-          }
+                       memberDayDuties.putIfAbsent(seg.personnelId, () => {});
+                       memberDayDuties[seg.personnelId]!
+                           .putIfAbsent(day, () => [])
+                           .add(compositeLabel);
+                   }
+                } catch(e) {}
+             }
+          } else {
+            bool originalGetsCredit = true;
+            String originalShort = "";
+            String replShort = "";
+            
+            if (slot.isBroken && slot.brokenTime != null) {
+              int diffMins = 0;
+              try {
+                final parts = slot.timeLabel.split(' - ');
+                final startDt = DateFormat('HH:mm').parse(parts[0].trim());
+                var breakDt = DateFormat('HH:mm').parse(slot.brokenTime!);
+                if (breakDt.isBefore(startDt) || breakDt.isAtSameMomentAs(startDt)) breakDt = breakDt.add(const Duration(days: 1));
+                diffMins = breakDt.difference(startDt).inMinutes;
+                
+                originalShort = '${startDt.hour.toString().padLeft(2, '0')}-${breakDt.hour.toString().padLeft(2, '0')}';
+                
+                var endDt = DateFormat('HH:mm').parse(parts[1].trim());
+                if (endDt.isBefore(breakDt) || endDt.isAtSameMomentAs(breakDt)) endDt = endDt.add(const Duration(days: 1));
+                if (endDt.difference(breakDt).inMinutes >= 30 && slot.replacementPersonnelId != null && slot.replacementPersonnelId!.isNotEmpty) {
+                   replShort = '${breakDt.hour.toString().padLeft(2, '0')}-${endDt.hour.toString().padLeft(2, '0')}';
+                   memberDayDuties.putIfAbsent(slot.replacementPersonnelId!, () => {});
+                   memberDayDuties[slot.replacementPersonnelId!]!
+                       .putIfAbsent(day, () => [])
+                       .add('$replShort|${slot.timeLabel}');
+                }
+              } catch (e) {}
+              if (diffMins < 30) originalGetsCredit = false;
+            }
 
-          if (originalGetsCredit) {
-            memberDayDuties.putIfAbsent(slot.personnelId, () => {});
-            memberDayDuties[slot.personnelId]!
-                .putIfAbsent(day, () => [])
-                .add(slot.timeLabel);
-          }
+            if (originalGetsCredit && slot.personnelId.isNotEmpty) {
+              memberDayDuties.putIfAbsent(slot.personnelId, () => {});
+              
+              String labelToAdd = slot.timeLabel;
+              if (originalShort.isNotEmpty) {
+                 labelToAdd = '$originalShort|${slot.timeLabel}';
+              } else {
+                 final parts = slot.timeLabel.split(' - ');
+                 if (parts.length == 2) {
+                     originalShort = '${parts[0].split(':')[0]}-${parts[1].split(':')[0]}';
+                     labelToAdd = '$originalShort|${slot.timeLabel}';
+                 }
+              }
 
-          if (slot.isBroken &&
-              slot.replacementPersonnelId != null &&
-              slot.replacementPersonnelId!.isNotEmpty) {
-            memberDayDuties.putIfAbsent(slot.replacementPersonnelId!, () => {});
-            memberDayDuties[slot.replacementPersonnelId!]!
-                .putIfAbsent(day, () => [])
-                .add(slot.timeLabel);
+              memberDayDuties[slot.personnelId]!
+                  .putIfAbsent(day, () => [])
+                  .add(labelToAdd);
+            }
           }
         }
       }
@@ -432,35 +471,40 @@ class SentryPdfGenerator {
                   children: labels.map((label) {
                     PdfColor c = PdfColors.black;
                     String shortLabel = "";
+                    if (label.contains("|")) {
+                        final parts = label.split("|");
+                        shortLabel = parts[0];
+                    }
 
                     if (label.contains("09:00 - 11:00")) {
-                      shortLabel = "09-11";
-                    } else if (label.contains("11:00 - 13:00"))
-                      shortLabel = "11-13";
-                    else if (label.contains("13:00 - 15:00"))
-                      shortLabel = "13-15";
-                    else if (label.contains("15:00 - 17:00"))
-                      shortLabel = "15-17";
-                    else if (label.contains("17:00 - 19:00"))
-                      shortLabel = "17-19";
-                    else if (label.contains("19:00 - 21:00"))
-                      shortLabel = "19-21";
-                    else if (label.contains("21:00 - 23:00"))
-                      shortLabel = "21-23";
-                    else if (label.contains("23:00 - 01:00")) {
-                      shortLabel = "23-01";
+                      if (shortLabel.isEmpty) shortLabel = "09-11";
+                    } else if (label.contains("11:00 - 13:00")) {
+                      if (shortLabel.isEmpty) shortLabel = "11-13";
+                    } else if (label.contains("13:00 - 15:00")) {
+                      if (shortLabel.isEmpty) shortLabel = "13-15";
+                    } else if (label.contains("15:00 - 17:00")) {
+                      if (shortLabel.isEmpty) shortLabel = "15-17";
+                    } else if (label.contains("17:00 - 19:00")) {
+                      if (shortLabel.isEmpty) shortLabel = "17-19";
+                    } else if (label.contains("19:00 - 21:00")) {
+                      if (shortLabel.isEmpty) shortLabel = "19-21";
+                    } else if (label.contains("21:00 - 23:00")) {
+                      if (shortLabel.isEmpty) shortLabel = "21-23";
+                    } else if (label.contains("23:00 - 01:00")) {
+                      if (shortLabel.isEmpty) shortLabel = "23-01";
                       c = PdfColors.green700;
                     } else if (label.contains("01:00 - 03:00")) {
-                      shortLabel = "01-03";
+                      if (shortLabel.isEmpty) shortLabel = "01-03";
                       c = PdfColors.red700;
                     } else if (label.contains("03:00 - 05:00")) {
-                      shortLabel = "03-05";
+                      if (shortLabel.isEmpty) shortLabel = "03-05";
                       c = PdfColors.red700;
                     } else if (label.contains("05:00 - 07:00")) {
-                      shortLabel = "05-07";
+                      if (shortLabel.isEmpty) shortLabel = "05-07";
                       c = PdfColors.green700;
-                    } else if (label.contains("07:00 - 09:00"))
-                      shortLabel = "07-09";
+                    } else if (label.contains("07:00 - 09:00")) {
+                      if (shortLabel.isEmpty) shortLabel = "07-09";
+                    }
 
                     return pw.Text(
                       shortLabel,

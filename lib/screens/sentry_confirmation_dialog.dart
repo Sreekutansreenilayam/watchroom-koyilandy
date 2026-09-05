@@ -24,13 +24,35 @@ class _SentryConfirmationDialogState extends State<SentryConfirmationDialog> {
   @override
   void initState() {
     super.initState();
-    _slots = widget.register.slots.map((s) => SentrySlot(
-      timeLabel: s.timeLabel,
-      personnelId: s.personnelId,
-      isBroken: s.isBroken,
-      brokenTime: s.brokenTime,
-      replacementPersonnelId: s.replacementPersonnelId,
-    )).toList();
+    _slots = widget.register.slots.map((s) {
+      List<SentryDutySegment>? segs = s.segments;
+      // If no segments are explicitly defined but it's broken, try to reconstruct
+      if (segs == null && s.isBroken && s.brokenTime != null && s.replacementPersonnelId != null) {
+        final parts = s.timeLabel.split(' - ');
+        if (parts.length == 2) {
+           segs = [
+             SentryDutySegment(personnelId: s.personnelId, startTime: parts[0].trim(), endTime: s.brokenTime!),
+             SentryDutySegment(personnelId: s.replacementPersonnelId!, startTime: s.brokenTime!, endTime: parts[1].trim()),
+           ];
+        }
+      } else if (segs == null && s.personnelId.isNotEmpty) {
+        final parts = s.timeLabel.split(' - ');
+        if (parts.length == 2) {
+           segs = [
+             SentryDutySegment(personnelId: s.personnelId, startTime: parts[0].trim(), endTime: parts[1].trim()),
+           ];
+        }
+      }
+
+      return SentrySlot(
+        timeLabel: s.timeLabel,
+        personnelId: s.personnelId,
+        isBroken: s.isBroken,
+        brokenTime: s.brokenTime,
+        replacementPersonnelId: s.replacementPersonnelId,
+        segments: segs,
+      );
+    }).toList();
   }
 
   Future<void> _confirm() async {
@@ -96,41 +118,75 @@ class _SentryConfirmationDialogState extends State<SentryConfirmationDialog> {
 
   void _showBrokenDialog(int index) {
     final slot = _slots[index];
-    TimeOfDay? selectedTime;
-    String? selectedReplacementId;
+    if (slot.segments == null || slot.segments!.isEmpty) return;
 
-    if (slot.brokenTime != null) {
-      try {
-        final dt = DateFormat('HH:mm').parse(slot.brokenTime!);
-        selectedTime = TimeOfDay.fromDateTime(dt);
-      } catch (e) {
-        // ignore
-      }
-    }
+    List<SentryDutySegment> tempSegments = List.from(slot.segments!);
 
     final manProvider = context.read<ManpowerProvider>();
-
-    final Set<String> assignedIds = {};
-    for (var s in widget.register.slots) {
-      if (s.personnelId.isNotEmpty) {
-        assignedIds.add(s.personnelId);
-      }
-    }
-    assignedIds.addAll(widget.register.spares);
+    final attProvider = context.read<AttendanceProvider>();
 
     final eligiblePersonnel = manProvider.getActivePersonnelForDate(widget.register.date).where((p) {
-      return assignedIds.contains(p.idNumber);
+      if (!['FRO', 'KHG', 'Trainees'].contains(p.designation)) return false;
+      
+      final att = attProvider.attendanceMap[p.id];
+      final status = att?.dailyStatus[widget.register.date.day];
+      return (status == 'X' || status == null || status.isEmpty || status.toUpperCase() == 'X/R');
     }).toList();
 
-    if (slot.replacementPersonnelId != null) {
-      final exists = eligiblePersonnel.any((p) => p.idNumber == slot.replacementPersonnelId);
-      if (exists) {
-         selectedReplacementId = slot.replacementPersonnelId;
-      } else {
-         final missing = manProvider.getActivePersonnelForDate(widget.register.date).where((p) => p.idNumber == slot.replacementPersonnelId).firstOrNull;
-         if (missing != null) eligiblePersonnel.add(missing);
-         selectedReplacementId = slot.replacementPersonnelId;
-      }
+    Future<void> splitSegment(StateSetter setDialogState, int segIndex) async {
+         var seg = tempSegments[segIndex];
+         
+         DateTime startDt = DateFormat('HH:mm').parse(seg.startTime);
+         DateTime endDt = DateFormat('HH:mm').parse(seg.endTime);
+         if (endDt.isBefore(startDt) || endDt.isAtSameMomentAs(startDt)) {
+            endDt = endDt.add(const Duration(days: 1));
+         }
+
+         TimeOfDay? pickedTime = await _showRollingTimePicker(context, TimeOfDay.fromDateTime(startDt));
+         if (pickedTime == null) return;
+         
+         String pickedFormatted = '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
+         DateTime pickedDt = DateFormat('HH:mm').parse(pickedFormatted);
+         if (endDt.day > startDt.day && pickedDt.hour < 12 && startDt.hour >= 12) {
+             pickedDt = pickedDt.add(const Duration(days: 1));
+         }
+
+         if (pickedDt.isBefore(startDt) || pickedDt.isAfter(endDt) || pickedDt.isAtSameMomentAs(startDt) || pickedDt.isAtSameMomentAs(endDt)) {
+             if (mounted) {
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Time must be strictly between start and end times.')));
+             }
+             return;
+         }
+
+         String? selectedReplacementId;
+         bool confirmed = await showDialog<bool>(
+            context: context,
+            builder: (ctx) {
+               return StatefulBuilder(builder: (ctx, setInnerState) {
+                  return AlertDialog(
+                     backgroundColor: const Color(0xFF1E1E1E),
+                     title: const Text('Select Replacement', style: TextStyle(color: Colors.white)),
+                     content: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        dropdownColor: const Color(0xFF2A2A2A),
+                        items: eligiblePersonnel.map((p) => DropdownMenuItem(value: p.idNumber, child: Text(p.name, style: const TextStyle(color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis))).toList(),
+                        onChanged: (val) => setInnerState(() => selectedReplacementId = val),
+                     ),
+                     actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel', style: TextStyle(color: Colors.white54))),
+                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm', style: TextStyle(color: Colors.blueAccent))),
+                     ]
+                  );
+               });
+            }
+         ) ?? false;
+
+         if (confirmed && selectedReplacementId != null) {
+            setDialogState(() {
+               tempSegments[segIndex] = SentryDutySegment(personnelId: seg.personnelId, startTime: seg.startTime, endTime: pickedFormatted);
+               tempSegments.insert(segIndex + 1, SentryDutySegment(personnelId: selectedReplacementId!, startTime: pickedFormatted, endTime: seg.endTime));
+            });
+         }
     }
 
     showDialog(
@@ -141,52 +197,27 @@ class _SentryConfirmationDialogState extends State<SentryConfirmationDialog> {
             return AlertDialog(
               backgroundColor: const Color(0xFF1E1E1E),
               title: Text('Edit Duty (${slot.timeLabel})', style: const TextStyle(color: Colors.white)),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('If this duty was broken or changed, record the exact time and who took over.', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    title: const Text('Time of Break', style: TextStyle(color: Colors.white70)),
-                    subtitle: Text(selectedTime != null ? selectedTime!.format(context) : 'Not Set', style: const TextStyle(color: Colors.orange)),
-                    trailing: const Icon(Icons.access_time, color: Colors.orange),
-                    onTap: () async {
-                      TimeOfDay? slotStartTime;
-                      try {
-                        final startStr = slot.timeLabel.split(' - ')[0].trim();
-                        final parts = startStr.split(':');
-                        slotStartTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
-                      } catch (_) {}
-
-                      final t = await _showRollingTimePicker(
-                        context,
-                        selectedTime ?? slotStartTime ?? TimeOfDay.now(),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                   shrinkWrap: true,
+                   itemCount: tempSegments.length,
+                   itemBuilder: (ctx, i) {
+                      var seg = tempSegments[i];
+                      final pName = manProvider.getActivePersonnelForDate(widget.register.date).where((m) => m.idNumber == seg.personnelId).firstOrNull?.name ?? seg.personnelId;
+                      return Card(
+                        color: const Color(0xFF2A2A2A),
+                        child: ListTile(
+                           title: Text(pName, style: const TextStyle(color: Colors.white, fontSize: 13)),
+                           subtitle: Text('${seg.startTime} - ${seg.endTime}', style: const TextStyle(color: Colors.orange)),
+                           trailing: IconButton(
+                              icon: const Icon(Icons.call_split, color: Colors.blueAccent),
+                              onPressed: () => splitSegment(setDialogState, i),
+                           ),
+                        ),
                       );
-                      if (t != null) setDialogState(() => selectedTime = t);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedReplacementId,
-                    isExpanded: true,
-                    hint: const Text('Select Replacement', style: TextStyle(color: Colors.white54)),
-                    dropdownColor: const Color(0xFF2A2A2A),
-                    items: () {
-                      final Set<String> seenIds = {};
-                      final uniquePersonnel = eligiblePersonnel.where((p) {
-                        if (seenIds.contains(p.idNumber)) return false;
-                        seenIds.add(p.idNumber);
-                        return true;
-                      }).toList();
-
-                      return uniquePersonnel.map((p) => DropdownMenuItem<String>(
-                        value: p.idNumber,
-                        child: Text(p.name, style: const TextStyle(color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      )).toList();
-                    }(),
-                    onChanged: (val) => setDialogState(() => selectedReplacementId = val),
-                  ),
-                ],
+                   },
+                ),
               ),
               actions: [
                 TextButton(
@@ -195,49 +226,17 @@ class _SentryConfirmationDialogState extends State<SentryConfirmationDialog> {
                 ),
                 TextButton(
                   onPressed: () {
-                    if (selectedTime != null && selectedReplacementId != null) {
-                       try {
-                           final parts = slot.timeLabel.split(' - ');
-                           if (parts.length == 2) {
-                               DateTime startDt = DateFormat('HH:mm').parse(parts[0].trim());
-                               DateTime endDt = DateFormat('HH:mm').parse(parts[1].trim());
-                               if (endDt.isBefore(startDt) || endDt.isAtSameMomentAs(startDt)) {
-                                   endDt = endDt.add(const Duration(days: 1));
-                               }
-
-                               String pickedFormatted = '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}';
-                               DateTime pickedDt = DateFormat('HH:mm').parse(pickedFormatted);
-
-                               // If the slot crosses midnight, and picked time is in the morning while start time is evening
-                               if (endDt.day > startDt.day && pickedDt.hour < 12 && startDt.hour >= 12) {
-                                   pickedDt = pickedDt.add(const Duration(days: 1));
-                               }
-
-                               if (pickedDt.isBefore(startDt) || pickedDt.isAfter(endDt)) {
-                                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                       content: Text('Time must be between ${slot.timeLabel}'),
-                                       backgroundColor: Colors.redAccent,
-                                   ));
-                                   return;
-                               }
-                           }
-                       } catch (e) {
-                           // ignore parse errors and proceed
-                       }
-
-                       setState(() {
-                         _slots[index] = SentrySlot(
-                           timeLabel: slot.timeLabel,
-                           personnelId: slot.personnelId,
-                           isBroken: true,
-                           brokenTime: '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
-                           replacementPersonnelId: selectedReplacementId,
-                         );
-                       });
-                       Navigator.pop(context);
-                    } else {
-                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select time and replacement.')));
-                    }
+                     setState(() {
+                       _slots[index] = SentrySlot(
+                         timeLabel: slot.timeLabel,
+                         personnelId: slot.personnelId,
+                         isBroken: tempSegments.length > 1,
+                         brokenTime: tempSegments.length > 1 ? tempSegments[0].endTime : null,
+                         replacementPersonnelId: tempSegments.length > 1 ? tempSegments[1].personnelId : null,
+                         segments: tempSegments,
+                       );
+                     });
+                     Navigator.pop(context);
                   },
                   child: const Text('Save Changes', style: TextStyle(color: Colors.orange)),
                 ),
@@ -328,17 +327,20 @@ class _SentryConfirmationDialogState extends State<SentryConfirmationDialog> {
                         const SizedBox(height: 8),
                         Text('Assigned: $name', style: TextStyle(color: slot.isBroken ? Colors.white54 : Colors.white, decoration: slot.isBroken ? TextDecoration.lineThrough : null)),
 
-                        if (slot.isBroken) ...[
+                        if (slot.isBroken && slot.segments != null) ...[
                            const SizedBox(height: 8),
                            Container(
                              padding: const EdgeInsets.all(8),
                              decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
                              child: Column(
                                crossAxisAlignment: CrossAxisAlignment.start,
-                               children: [
-                                 Text('Broken at: ${slot.brokenTime}', style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
-                                 Text('Replaced by: ${manProvider.getActivePersonnelForDate(widget.register.date).where((m) => m.idNumber == slot.replacementPersonnelId).firstOrNull?.name ?? slot.replacementPersonnelId}', style: const TextStyle(color: Colors.white, fontSize: 13)),
-                               ],
+                               children: slot.segments!.map((seg) {
+                                  final pName = manProvider.getActivePersonnelForDate(widget.register.date).where((m) => m.idNumber == seg.personnelId).firstOrNull?.name ?? seg.personnelId;
+                                  return Padding(
+                                     padding: const EdgeInsets.only(bottom: 4),
+                                     child: Text('${seg.startTime} - ${seg.endTime} : $pName', style: const TextStyle(color: Colors.white, fontSize: 13)),
+                                  );
+                               }).toList(),
                              ),
                            )
                         ],
@@ -350,12 +352,19 @@ class _SentryConfirmationDialogState extends State<SentryConfirmationDialog> {
                             if (slot.isBroken)
                                TextButton.icon(
                                  onPressed: () {
-                                    setState(() {
-                                      _slots[index] = SentrySlot(
-                                        timeLabel: slot.timeLabel,
-                                        personnelId: slot.personnelId,
-                                      );
-                                    });
+                                     setState(() {
+                                       final parts = slot.timeLabel.split(' - ');
+                                       _slots[index] = SentrySlot(
+                                         timeLabel: slot.timeLabel,
+                                         personnelId: slot.personnelId,
+                                         isBroken: false,
+                                         brokenTime: null,
+                                         replacementPersonnelId: null,
+                                         segments: parts.length == 2 ? [
+                                            SentryDutySegment(personnelId: slot.personnelId, startTime: parts[0].trim(), endTime: parts[1].trim())
+                                         ] : null,
+                                       );
+                                     });
                                  },
                                  icon: const Icon(Icons.restore, color: Colors.orange, size: 16),
                                  label: const Text('Reset', style: TextStyle(color: Colors.orange)),

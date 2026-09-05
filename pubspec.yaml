@@ -2,7 +2,7 @@ name: watchroom
 description: "Fire and Rescue Duty Management App"
 publish_to: 'none'
 
-version: 10.1.8+3
+version: 10.1.9+4
 
 environment:
   sdk: ^3.11.5
