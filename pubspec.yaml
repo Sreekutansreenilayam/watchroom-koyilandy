@@ -1,0 +1,60 @@
+name: watchroom
+description: "Fire and Rescue Duty Management App"
+publish_to: 'none'
+
+version: 10.1.8+3
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  firebase_core: ^4.11.0
+  firebase_auth: ^6.5.3
+  cloud_firestore: ^6.6.0
+  provider: ^6.1.5+1
+  google_fonts: ^8.1.0
+  intl: ^0.20.2
+  flutter_map: ^8.3.0
+  latlong2: ^0.9.1
+  shared_preferences: ^2.5.5
+  pdf: ^3.12.0
+  printing: ^5.14.3
+  excel: ^4.0.6
+  share_plus: ^13.2.0
+  path_provider: ^2.1.6
+  http: ^1.2.0
+  screenshot: ^3.0.0
+  url_launcher: ^6.3.2
+  package_info_plus: ^10.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon.png"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/icon.png"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon.png
+    - assets/fonts/NotoSansMalayalam-Regular.ttf
+    - assets/fonts/NotoSans-Regular.ttf
+    - assets/fonts/AnjaliOldLipi.ttf
+
+  fonts:
+    - family: NotoSansMalayalam
+      fonts:
+        - asset: assets/fonts/NotoSansMalayalam-Regular.ttf
+    - family: AnjaliOldLipi
+      fonts:
+        - asset: assets/fonts/AnjaliOldLipi.ttf
