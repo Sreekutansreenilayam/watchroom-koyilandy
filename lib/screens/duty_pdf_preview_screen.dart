@@ -18,6 +18,11 @@ class DutyPdfPreviewScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Duty Register PDF')),
       body: PdfPreview(
+        allowSharing: true,
+        allowPrinting: true,
+        canChangePageFormat: false,
+        canChangeOrientation: false,
+        canDebug: false,
         build: (format) => DutyPdfGenerator.generateDutyRegisterPdf(
           register,
           attendanceMap: attProvider.attendanceMap,

@@ -903,7 +903,7 @@ class DutyPdfGenerator {
 
                 // POSTED PERSONNEL Group
                 pw.Expanded(
-                  flex: 10 + 12 + 10 + 10, // SFRO + FRO + KHG + FRO(D)
+                  flex: 7 + 28 + 5 + 7, // SFRO + FRO + KHG + FRO(D)
                   child: pw.Container(
                     decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 1, color: PdfColors.black))),
                     child: pw.Column(
@@ -916,7 +916,7 @@ class DutyPdfGenerator {
                             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                             children: [
                               pw.Expanded(flex: 7, child: _headerCell(isSfroInCharge ? 'SFRO\n(I/C)' : 'SFRO', size: 6.5, rightBorder: true)),
-                              pw.Expanded(flex: 23, child: _headerCell('FRO', size: 6.5, rightBorder: true)),
+                              pw.Expanded(flex: 28, child: _headerCell('FRO', size: 6.5, rightBorder: true)),
                               pw.Expanded(flex: 5, child: _headerCell('KHG', size: 6.5, rightBorder: true)),
                               pw.Expanded(flex: 7, child: _headerCell('FRO(D)', size: 5.5)),
                             ],
@@ -929,7 +929,7 @@ class DutyPdfGenerator {
 
                 // CONDITION Group
                 pw.Expanded(
-                  flex: 12 + 12, // MORNING + EVENING
+                  flex: 10 + 10, // MORNING + EVENING
                   child: pw.Container(
                     decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 1, color: PdfColors.black))),
                     child: pw.Column(
@@ -941,8 +941,8 @@ class DutyPdfGenerator {
                           child: pw.Row(
                             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                             children: [
-                              pw.Expanded(flex: 12, child: _headerCell('MORNING\nROLLCALL', size: 5, rightBorder: true)),
-                              pw.Expanded(flex: 12, child: _headerCell('EVENING\nROLLCALL', size: 5)),
+                              pw.Expanded(flex: 10, child: _headerCell('MORNING\nROLLCALL', size: 5, rightBorder: true)),
+                              pw.Expanded(flex: 10, child: _headerCell('EVENING\nROLLCALL', size: 5)),
                             ],
                           ),
                         ),
@@ -951,7 +951,7 @@ class DutyPdfGenerator {
                   ),
                 ),
 
-                pw.Expanded(flex: 10, child: _headerCell('Remarks', size: 7)),
+                pw.Expanded(flex: 9, child: _headerCell('Remarks', size: 7)),
               ],
             ),
           ),
@@ -973,12 +973,12 @@ class DutyPdfGenerator {
                         0: const pw.FlexColumnWidth(6),
                         1: const pw.FlexColumnWidth(30),
                         2: const pw.FlexColumnWidth(7),
-                        3: const pw.FlexColumnWidth(23),
+                        3: const pw.FlexColumnWidth(28),
                         4: const pw.FlexColumnWidth(5),
                         5: const pw.FlexColumnWidth(7),
-                        6: const pw.FlexColumnWidth(12),
-                        7: const pw.FlexColumnWidth(12),
-                        8: const pw.FlexColumnWidth(10),
+                        6: const pw.FlexColumnWidth(10),
+                        7: const pw.FlexColumnWidth(10),
+                        8: const pw.FlexColumnWidth(9),
                       },
                       children: List.from(currentNormalRows),
                     )
@@ -1022,10 +1022,10 @@ class DutyPdfGenerator {
                         0: const pw.FlexColumnWidth(6),
                         1: const pw.FlexColumnWidth(30),
                         2: const pw.FlexColumnWidth(7),
-                        3: const pw.FlexColumnWidth(23),
+                        3: const pw.FlexColumnWidth(28),
                         4: const pw.FlexColumnWidth(5),
                         5: const pw.FlexColumnWidth(7),
-                        6: const pw.FlexColumnWidth(34), // 12 + 12 + 10
+                        6: const pw.FlexColumnWidth(29), // 10 + 10 + 9
                       },
                       children: [
                         pw.TableRow(
@@ -1080,10 +1080,10 @@ class DutyPdfGenerator {
                       verticalInside: pw.BorderSide(width: 1, color: PdfColors.black),
                     ),
                     columnWidths: {
-                      0: const pw.FlexColumnWidth(78),
-                      1: const pw.FlexColumnWidth(12),
-                      2: const pw.FlexColumnWidth(12),
-                      3: const pw.FlexColumnWidth(10),
+                      0: const pw.FlexColumnWidth(83),
+                      1: const pw.FlexColumnWidth(10),
+                      2: const pw.FlexColumnWidth(10),
+                      3: const pw.FlexColumnWidth(9),
                     },
                     children: [
                       pw.TableRow(
