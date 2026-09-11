@@ -101,7 +101,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
       DutyVehicleAssignment(vehicleName: isNewRule ? 'C/S - 1, 7, 8, 13, Aska-III (I-F/T)' : 'C/S - 1, 7, 8, 13, Aska-III (I-MTU)', seniority: 13),
       DutyVehicleAssignment(vehicleName: isNewRule ? 'C/S - 4, 5, 6, 11, Fanergy, Float Pump, Hydraulic Lukas (II-W/B)' : 'C/S - 4, 5, 6, 11, Fanergy, Float Pump, Hydraulic Lukas (F/T)', seniority: 14),
       DutyVehicleAssignment(vehicleName: 'C/S-2, 3, 9, 10, 12, Gen EU-65, EXK-2800, OBM, Mini Moon Light (QRV)', seniority: 15),
-      DutyVehicleAssignment(vehicleName: 'Wireless', seniority: 16),
+      DutyVehicleAssignment(vehicleName: 'Wireless, Interactive Flat Panel Display', seniority: 16),
       DutyVehicleAssignment(vehicleName: 'Blower, Torch set', seniority: 17),
       DutyVehicleAssignment(vehicleName: 'BA Set, Gas Detector', seniority: 18),
     ];
@@ -266,6 +266,19 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
                  isOffRoad: completeVehiclesList[i].isOffRoad,
                  isAttached: completeVehiclesList[i].isAttached,
                  manuallyEditedIds: completeVehiclesList[i].manuallyEditedIds,
+            );
+          } else if (vName == 'Wireless') {
+            completeVehiclesList[i] = DutyVehicleAssignment(
+              vehicleName: 'Wireless, Interactive Flat Panel Display',
+              seniority: completeVehiclesList[i].seniority,
+              sfro: completeVehiclesList[i].sfro,
+              fro: completeVehiclesList[i].fro,
+              khg: completeVehiclesList[i].khg,
+              froD: completeVehiclesList[i].froD,
+              remarks: completeVehiclesList[i].remarks,
+              isOffRoad: completeVehiclesList[i].isOffRoad,
+              isAttached: completeVehiclesList[i].isAttached,
+              manuallyEditedIds: completeVehiclesList[i].manuallyEditedIds,
             );
           }
         }
@@ -1420,7 +1433,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
        for (var stat in driverStats) {
           String id = (stat['person'] as Manpower).idNumber;
           if (personAssignments[id]!.isEmpty) {
-             String wireless = 'Wireless';
+             String wireless = 'Wireless, Interactive Flat Panel Display';
              if (_froControllers.containsKey(wireless)) {
                 String current = _froControllers[wireless]!.text;
                 if (current.isEmpty) {
@@ -1491,9 +1504,9 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
           int score = (stat['shiftedRank'] as int);
           
           List<Set<String>> history = stat['history'];
-          if (history.length >= 1 && history[0].contains(targetV)) score += 200000;
-          if (history.length >= 2 && history[1].contains(targetV)) score += 100000;
-          if (history.length >= 3 && history[2].contains(targetV)) score += 50000;
+          if (history.length >= 1 && history[0].contains(targetV)) score += 2000000;
+          if (history.length >= 2 && history[1].contains(targetV)) score += 800000;
+          if (history.length >= 3 && history[2].contains(targetV)) score += 400000;
 
           score += assignments[personId]!.length * 1000000;
 
@@ -1799,7 +1812,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
     String acc1 = _vehicles.firstWhere((v) => v.vehicleName.contains(isNewRule ? 'I-F/T' : 'I-MTU'), orElse: () => _getDefaultVehicles()[12]).vehicleName;
     String acc2 = _vehicles.firstWhere((v) => v.vehicleName.contains(isNewRule ? 'II-W/B' : 'Hydraulic Lukas') || v.vehicleName.contains('II-MTU'), orElse: () => _getDefaultVehicles()[13]).vehicleName;
     String accQrv = _vehicles.firstWhere((v) => v.vehicleName.contains('C/S-2') || v.vehicleName.contains('C/S-10') || v.vehicleName.contains('(QRV)') && v.vehicleName.contains('C/S'), orElse: () => _getDefaultVehicles()[14]).vehicleName;
-    String wireless = 'Wireless';
+    String wireless = 'Wireless, Interactive Flat Panel Display';
     String torch = 'Blower, Torch set';
     String baSet = 'BA Set, Gas Detector';
 

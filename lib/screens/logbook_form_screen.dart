@@ -68,8 +68,8 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
        actions = ['Taking on Charge', 'Onward Journey', 'Return Journey', 'Fuel Drain/Decanting'];
     }
 
-    if (_selectedActionType == 'Fuel Receipt' && !actions.contains('Fuel Receipt')) {
-      actions.add('Fuel Receipt');
+    if (_selectedActionType != null && !actions.contains(_selectedActionType)) {
+      actions.add(_selectedActionType!);
     }
 
     return actions;
@@ -131,12 +131,12 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
       }
 
       double initCurrOdo = e.previousKms + e.travelledDistance + storedPumpKm;
-      _currOdoController.text = initCurrOdo > 0 ? (initCurrOdo % 1 == 0 ? initCurrOdo.toInt().toString() : initCurrOdo.toStringAsFixed(1)) : '';
+      _currOdoController.text = initCurrOdo > 0 ? _formatDecimal(initCurrOdo) : '';
 
       _pumpStartController.text = e.pumpStartTime;
       _pumpEndController.text = e.pumpEndTime;
       _pumpDurController.text = e.pumpDuration;
-      _pumpKmController.text = storedPumpKm > 0 ? (storedPumpKm % 1 == 0 ? storedPumpKm.toInt().toString() : storedPumpKm.toStringAsFixed(1)) : '';
+      _pumpKmController.text = storedPumpKm > 0 ? _formatDecimal(storedPumpKm) : '';
       _fuelJrnController.text = e.fuelConsumedForJourney.toString();
       _fuelPumpController.text = e.fuelConsumedForPump.toString();
       _remarksController.text = e.remarks;
@@ -158,7 +158,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
         if (lastEndingOdo > 0) {
           _prevKmsController.text = lastEndingOdo % 1 == 0 ? lastEndingOdo.toInt().toString() : lastEndingOdo.toString();
         }
-        _remFuelController.text = lastEndingFuel % 1 == 0 ? lastEndingFuel.toInt().toString() : lastEndingFuel.toStringAsFixed(1);
+        _remFuelController.text = _formatDecimal(lastEndingFuel);
       } else {
         if (widget.vehicle.currentOdometer > 0) {
           _prevKmsController.text = widget.vehicle.currentOdometer % 1 == 0 ? widget.vehicle.currentOdometer.toInt().toString() : widget.vehicle.currentOdometer.toString();
@@ -799,12 +799,17 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
     }
   }
 
+  String _formatDecimal(double val, {int maxDecimals = 3}) {
+    if (val % 1 == 0) return val.toInt().toString();
+    return val.toStringAsFixed(maxDecimals).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+  }
+
   void _checkSaturdayDS() {
     if ((_selectedActionType == 'Taking on Charge' || _selectedActionType == 'Emergency Taking on Charge') &&
         _date.weekday == DateTime.saturday) {
       final double weeklyDS = widget.vehicle.fixedDSConsumption;
       if (weeklyDS > 0) {
-        _fuelPumpController.text = weeklyDS % 1 == 0 ? weeklyDS.toInt().toString() : weeklyDS.toStringAsFixed(1);
+        _fuelPumpController.text = _formatDecimal(weeklyDS);
       }
     } else if (_selectedActionType == 'Taking on Charge' || _selectedActionType == 'Emergency Taking on Charge') {
       _fuelPumpController.text = '0';
@@ -871,7 +876,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
 
     if (_distController.text.isNotEmpty || pumpKm > 0) {
       double currOdo = prevKms + dist + pumpKm;
-      _currOdoController.text = currOdo > 0 ? currOdo.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '') : '';
+      _currOdoController.text = currOdo > 0 ? _formatDecimal(currOdo) : '';
     } else {
       _currOdoController.text = '';
     }
@@ -891,7 +896,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
     if (currOdo >= prevKms && currOdo > 0) {
       double dist = currOdo - prevKms - pumpKm;
       if (dist < 0) dist = 0;
-      _distController.text = dist.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+      _distController.text = _formatDecimal(dist);
     } else if (_currOdoController.text.isEmpty) {
       _distController.text = '';
     }
@@ -906,7 +911,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
     double dist = double.tryParse(_distController.text) ?? 0.0;
     if (widget.vehicle.mileageOnRoad > 0 && dist > 0) {
       double jrnFuel = dist / widget.vehicle.mileageOnRoad;
-      _fuelJrnController.text = jrnFuel.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+      _fuelJrnController.text = _formatDecimal(jrnFuel);
     } else if (_distController.text.isEmpty) {
       _fuelJrnController.text = '';
     }
@@ -914,7 +919,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
     double pumpKm = double.tryParse(_pumpKmController.text) ?? 0.0;
     if (widget.vehicle.hasFirePump && widget.vehicle.mileageOnPumping > 0 && pumpKm > 0) {
       double pumpFuel = pumpKm / widget.vehicle.mileageOnPumping;
-      _fuelPumpController.text = pumpFuel.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+      _fuelPumpController.text = _formatDecimal(pumpFuel);
     } else if (_pumpKmController.text.isEmpty) {
       _fuelPumpController.text = '';
     }
@@ -945,7 +950,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
     double totalRem = prevFuel + supFuel;
     if (totalRem < 0) totalRem = 0;
 
-    _remFuelController.text = totalRem.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+    _remFuelController.text = _formatDecimal(totalRem);
   }
 
   Future<void> _fetchFuelLedgerData() async {
@@ -1035,7 +1040,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
             if (lastEndingOdo > 0) {
               _prevKmsController.text = lastEndingOdo % 1 == 0 ? lastEndingOdo.toInt().toString() : lastEndingOdo.toString();
             }
-            _remFuelController.text = lastEndingFuel % 1 == 0 ? lastEndingFuel.toInt().toString() : lastEndingFuel.toStringAsFixed(1);
+            _remFuelController.text = _formatDecimal(lastEndingFuel);
             _recalculateRemainingFuel();
           });
         }
@@ -1053,25 +1058,23 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
     final dutyProvider = context.read<DutyProvider>();
     final manpowerProvider = context.read<ManpowerProvider>();
 
-    final targetDate = DateTime(_date.year, _date.month, _date.day);
+    DateTime targetDate = DateTime(_date.year, _date.month, _date.day);
+    if (_depTimeController.text.isNotEmpty) {
+      final parts = _depTimeController.text.split(':');
+      if (parts.isNotEmpty) {
+        int hour = int.tryParse(parts[0]) ?? 0;
+        if (hour < 9) {
+          targetDate = targetDate.subtract(const Duration(days: 1));
+        }
+      }
+    }
+
     final register = dutyProvider.registers.firstWhere(
       (r) {
         final d = DateTime(r.date.year, r.date.month, r.date.day);
         return d.isAtSameMomentAs(targetDate);
       },
-      orElse: () => DutyRegisterModel(
-        id: '',
-        date: _date,
-        rollCallTime: '',
-        shift: '',
-        staffSummaries: [],
-        homeGuardSummaries: [],
-        trainingSummaries: [],
-        vehicleAssignments: [],
-        phoneDutyIds: [],
-        messengerIds: [],
-        sentryDutyIds: [],
-      ),
+      orElse: () => DutyRegisterModel(id: '', date: _date, rollCallTime: '', shift: '', staffSummaries: [], homeGuardSummaries: [], trainingSummaries: [], vehicleAssignments: [], phoneDutyIds: [], messengerIds: [], sentryDutyIds: []),
     );
 
     if (register.vehicleAssignments.isEmpty) return;
@@ -1180,56 +1183,54 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
     final manpowerProvider = context.read<ManpowerProvider>();
     final allPersonnel = manpowerProvider.personnelList;
 
-    final targetDate = DateTime(_date.year, _date.month, _date.day);
-    final register = dutyProvider.registers.firstWhere(
+    final targetDateToday = DateTime(_date.year, _date.month, _date.day);
+    final targetDateYesterday = targetDateToday.subtract(const Duration(days: 1));
+
+    final registerToday = dutyProvider.registers.firstWhere(
       (r) {
         final d = DateTime(r.date.year, r.date.month, r.date.day);
-        return d.isAtSameMomentAs(targetDate);
+        return d.isAtSameMomentAs(targetDateToday);
       },
-      orElse: () => DutyRegisterModel(
-        id: '',
-        date: _date,
-        rollCallTime: '',
-        shift: '',
-        staffSummaries: [],
-        homeGuardSummaries: [],
-        trainingSummaries: [],
-        vehicleAssignments: [],
-        phoneDutyIds: [],
-        messengerIds: [],
-        sentryDutyIds: [],
-      ),
+      orElse: () => DutyRegisterModel(id: '', date: _date, rollCallTime: '', shift: '', staffSummaries: [], homeGuardSummaries: [], trainingSummaries: [], vehicleAssignments: [], phoneDutyIds: [], messengerIds: [], sentryDutyIds: []),
     );
 
-    final Set<String> presentIdsOnDate = {};
-    if (register.id.isNotEmpty || register.vehicleAssignments.isNotEmpty) {
-      for (var v in register.vehicleAssignments) {
-        if (v.froD.trim().isNotEmpty) presentIdsOnDate.add(v.froD.trim());
-        if (v.khg.trim().isNotEmpty) {
-          for (var id in v.khg.split(',')) {
-            if (id.trim().isNotEmpty) presentIdsOnDate.add(id.trim());
+    final registerYesterday = dutyProvider.registers.firstWhere(
+      (r) {
+        final d = DateTime(r.date.year, r.date.month, r.date.day);
+        return d.isAtSameMomentAs(targetDateYesterday);
+      },
+      orElse: () => DutyRegisterModel(id: '', date: targetDateYesterday, rollCallTime: '', shift: '', staffSummaries: [], homeGuardSummaries: [], trainingSummaries: [], vehicleAssignments: [], phoneDutyIds: [], messengerIds: [], sentryDutyIds: []),
+    );
+
+    final registersToProcess = [registerToday, registerYesterday];
+
+    final Map<String, DateTime> presentIdsOnDate = {};
+    for (var register in registersToProcess) {
+      if (register.id.isNotEmpty || register.vehicleAssignments.isNotEmpty) {
+        void addId(String id) {
+          final cleanId = id.trim();
+          if (cleanId.isNotEmpty && !presentIdsOnDate.containsKey(cleanId)) {
+            presentIdsOnDate[cleanId] = register.date;
           }
         }
-        if (v.fro.trim().isNotEmpty) {
-          for (var id in v.fro.split(',')) {
-            if (id.trim().isNotEmpty) presentIdsOnDate.add(id.trim());
-          }
+        for (var v in register.vehicleAssignments) {
+          addId(v.froD);
+          for (var id in v.khg.split(',')) addId(id);
+          for (var id in v.fro.split(',')) addId(id);
+          addId(v.sfro);
         }
-        if (v.sfro.trim().isNotEmpty) presentIdsOnDate.add(v.sfro.trim());
-      }
 
-      for (var id in register.specialDutyIds) { if (id.trim().isNotEmpty) presentIdsOnDate.add(id.trim()); }
-      for (var id in register.phoneDutyIds) { if (id.trim().isNotEmpty) presentIdsOnDate.add(id.trim()); }
-      for (var id in register.messengerIds) { if (id.trim().isNotEmpty) presentIdsOnDate.add(id.trim()); }
-      for (var id in register.sentryDutyIds) { if (id.trim().isNotEmpty) presentIdsOnDate.add(id.trim()); }
-      for (var id in register.controlRoomIds) { if (id.trim().isNotEmpty) presentIdsOnDate.add(id.trim()); }
-      for (var id in register.stationWriterIds) { if (id.trim().isNotEmpty) presentIdsOnDate.add(id.trim()); }
+        for (var id in register.specialDutyIds) addId(id);
+        for (var id in register.phoneDutyIds) addId(id);
+        for (var id in register.messengerIds) addId(id);
+        for (var id in register.sentryDutyIds) addId(id);
+        for (var id in register.controlRoomIds) addId(id);
+        for (var id in register.stationWriterIds) addId(id);
 
-      for (var s in [...register.staffSummaries, ...register.homeGuardSummaries]) {
-        final cat = s.category.toLowerCase();
-        if (!cat.contains('off') && !cat.contains('leave') && !cat.contains('absent')) {
-          for (var id in s.personnelIds) {
-            if (id.trim().isNotEmpty) presentIdsOnDate.add(id.trim());
+        for (var s in [...register.staffSummaries, ...register.homeGuardSummaries]) {
+          final cat = s.category.toLowerCase();
+          if (!cat.contains('off') && !cat.contains('leave') && !cat.contains('absent')) {
+            for (var id in s.personnelIds) addId(id);
           }
         }
       }
@@ -1248,9 +1249,9 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
         final cleanIdStr = m.id.trim();
         final cleanName = m.name.trim();
 
-        return presentIdsOnDate.contains(cleanId) ||
-               presentIdsOnDate.contains(cleanIdStr) ||
-               presentIdsOnDate.any((p) => p == cleanId || p == cleanIdStr || cleanName.contains(p));
+        return presentIdsOnDate.containsKey(cleanId) ||
+               presentIdsOnDate.containsKey(cleanIdStr) ||
+               presentIdsOnDate.keys.any((p) => p == cleanId || p == cleanIdStr || cleanName.contains(p));
       }
 
       return true;
@@ -1327,6 +1328,48 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
                             itemBuilder: (context, index) {
                               final driver = filtered[index];
                               final isSelected = _operatorController.text.contains(driver.idNumber) || _operatorController.text.contains(driver.name);
+                              
+                              DateTime? driverDate;
+                              final cleanId = driver.idNumber.trim();
+                              final cleanIdStr = driver.id.trim();
+                              if (presentIdsOnDate.containsKey(cleanId)) {
+                                driverDate = presentIdsOnDate[cleanId];
+                              } else if (presentIdsOnDate.containsKey(cleanIdStr)) {
+                                driverDate = presentIdsOnDate[cleanIdStr];
+                              } else {
+                                for (var entry in presentIdsOnDate.entries) {
+                                  if (entry.key == cleanId || entry.key == cleanIdStr || driver.name.trim().contains(entry.key)) {
+                                    driverDate = entry.value;
+                                    break;
+                                  }
+                                }
+                              }
+
+                              Widget? trailingWidget;
+                              if (driverDate != null || isSelected) {
+                                trailingWidget = Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (driverDate != null)
+                                      Container(
+                                        margin: EdgeInsets.only(right: isSelected ? 8 : 0),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.amber.withOpacity(0.5)),
+                                        ),
+                                        child: Text(
+                                          DateFormat('dd/MM/yyyy').format(driverDate),
+                                          style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    if (isSelected)
+                                      const Icon(Icons.check_circle, color: Colors.amber),
+                                  ],
+                                );
+                              }
+
                               return ListTile(
                                 leading: CircleAvatar(
                                   backgroundColor: driver.isDriver ? Colors.amber.withOpacity(0.2) : Colors.white10,
@@ -1334,7 +1377,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
                                 ),
                                 title: Text(driver.name, style: TextStyle(color: Colors.white, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
                                 subtitle: Text('${driver.designation} | PEN/No: ${driver.idNumber}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                                trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.amber) : null,
+                                trailing: trailingWidget,
                                 onTap: () {
                                   setState(() {
                                     _operatorController.text = '${driver.name} (${driver.idNumber})';
@@ -1664,7 +1707,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Saturday DS (Daily Start): Fixed DS Consumption (${widget.vehicle.fixedDSConsumption % 1 == 0 ? widget.vehicle.fixedDSConsumption.toInt() : widget.vehicle.fixedDSConsumption.toStringAsFixed(1)} L) applied & deducted from fuel tank.',
+                              'Saturday DS (Daily Start): Fixed DS Consumption (${_formatDecimal(widget.vehicle.fixedDSConsumption)} L) applied & deducted from fuel tank.',
                               style: const TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.w500),
                             ),
                           ),

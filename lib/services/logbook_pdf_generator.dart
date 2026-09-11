@@ -60,7 +60,12 @@ class LogbookPdfGenerator {
       }
     }
 
-    String pumpKmStr = totalPumpKm % 1 == 0 ? totalPumpKm.toInt().toString() : totalPumpKm.toStringAsFixed(1);
+    String _formatDecimal(double val, {int maxDecimals = 3}) {
+      if (val % 1 == 0) return val.toInt().toString();
+      return val.toStringAsFixed(maxDecimals).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
+    }
+
+    String pumpKmStr = _formatDecimal(totalPumpKm);
     String pumpSummaryLabel = '(2) തൻമാസം $pumpKmStr കി.മീ പമ്പ് പ്രവർത്തിച്ചതിന് ചെലവ്';
 
     double averageMileage = 0;
@@ -144,12 +149,9 @@ class LogbookPdfGenerator {
       );
     }
 
-    String formatNumOrDash(double val, {bool forceInt = false}) {
+    String formatNumOrDash(double val) {
       if (val == 0) return '-';
-      if (forceInt || val % 1 == 0) {
-        return val.toInt().toString();
-      }
-      return val.toStringAsFixed(2);
+      return _formatDecimal(val);
     }
 
     String formatFuel(double val) {
@@ -171,7 +173,7 @@ class LogbookPdfGenerator {
       final hasKm = effectiveKm > 0;
 
       if (hasDuration && hasKm) {
-        String kmStr = effectiveKm % 1 == 0 ? effectiveKm.toInt().toString() : effectiveKm.toStringAsFixed(1);
+        String kmStr = _formatDecimal(effectiveKm);
         String durStr = e.pumpDuration.trim();
         if (durStr.contains(':')) {
           final parts = durStr.split(':');
@@ -215,7 +217,7 @@ class LogbookPdfGenerator {
         }
         return tableCell(durStr);
       } else if (hasKm) {
-        String kmStr = effectiveKm % 1 == 0 ? effectiveKm.toInt().toString() : effectiveKm.toStringAsFixed(1);
+        String kmStr = _formatDecimal(effectiveKm);
         return tableCell('$kmStr Km');
       }
       return tableCell('-');
@@ -537,8 +539,8 @@ class LogbookPdfGenerator {
         tableCell(formatFuel(e.dWater)),
         tableCell(formatFuel(e.adBlue)),
         tableCell(formatTextOrDash(e.departureTime)),
-        tableCell(formatTextOrDash(e.fromPlace)),
-        tableCell(formatTextOrDash(e.toPlace)),
+        tableCell(isTakingOnCharge ? '-' : formatTextOrDash(e.fromPlace)),
+        tableCell(isTakingOnCharge ? '-' : formatTextOrDash(e.toPlace)),
         tableCell(formatTextOrDash(e.arrivalTime)),
         tableCell(formatNumOrDash(e.travelledDistance)),
         tableCell(formatTextOrDash(e.pumpStartTime)),
@@ -552,7 +554,7 @@ class LogbookPdfGenerator {
         tableCell(formatTextOrDash(e.operatorName)),
       ]));
       
-      runningKm += e.travelledDistance;
+      runningKm += e.travelledDistance + e.pumpKm;
       runningFuel = runningFuel + e.suppliedFuel - e.fuelConsumedForJourney - e.fuelConsumedForPump;
     }
 
@@ -588,7 +590,7 @@ class LogbookPdfGenerator {
       );
     }
 
-    String totalKmStr = totalKm % 1 == 0 ? totalKm.toInt().toString() : totalKm.toStringAsFixed(2);
+    String totalKmStr = _formatDecimal(totalKm);
 
     Widget bottomSection = Container(
       width: 1059,

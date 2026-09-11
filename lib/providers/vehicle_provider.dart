@@ -87,10 +87,11 @@ class VehicleProvider extends ChangeNotifier {
       if (otherEntries.isNotEmpty) {
         final lastRemaining = otherEntries.last;
         newOdometer = lastRemaining.previousKms + lastRemaining.travelledDistance + lastRemaining.pumpKm;
-        newFuelInTank = lastRemaining.remainingFuelInTank;
+        newFuelInTank = lastRemaining.remainingFuelInTank + lastRemaining.suppliedFuel - lastRemaining.fuelConsumedForJourney - lastRemaining.fuelConsumedForPump;
+        if (newFuelInTank < 0) newFuelInTank = 0;
       } else {
         newOdometer = entryToDelete.previousKms;
-        newFuelInTank = entryToDelete.remainingFuelInTank + fuelConsumedToSubtract - entryToDelete.suppliedFuel;
+        newFuelInTank = entryToDelete.remainingFuelInTank;
         if (newFuelInTank < 0) newFuelInTank = 0;
       }
 
