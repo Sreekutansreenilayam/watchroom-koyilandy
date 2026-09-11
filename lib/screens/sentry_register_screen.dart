@@ -438,7 +438,7 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
 
     int getSlotForPerson(SentryRegisterModel? reg, String id) {
       if (reg == null) return -1;
-      for (int i = 0; i < reg.slots.length; i++) {
+      for (int i = reg.slots.length - 1; i >= 0; i--) {
         if (didPersonGetCreditForSlot(reg, i, id)) return i;
       }
       return -1;
@@ -469,7 +469,7 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
 
           for (int idx = 0; idx < reg.slots.length; idx++) {
             if (didPersonGetCreditForSlot(reg, idx, p.idNumber)) {
-              if (lastDutySlotToday == -1) lastDutySlotToday = idx;
+              lastDutySlotToday = idx;
               if (idx == 8 || idx == 9) didRedToday = true;
               if (idx == 7 || idx == 10) didGreenToday = true;
             }
@@ -764,27 +764,52 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
         personStats[greenEligible[0]]!['assignedToday'] = (personStats[greenEligible[0]]!['assignedToday'] as int) + 1;
     }
 
-    // PHASE 3: Assign Remaining Black Duties (0-6, 11) using original repetition rules
+    // PHASE 3A: First Turn Normal Distribution
     List<int> remainingSlots = [0, 1, 2, 3, 4, 5, 6, 11];
     
     int slotsToFill = 8;
     for (int s in remainingSlots) {
         if (assignedSlots.contains(s)) slotsToFill--;
     }
-    
-    int filledInPhase3 = 0;
 
-    while (filledInPhase3 < slotsToFill) {
+    // Determine how many people are eligible for black slots (they haven't been assigned Red/Green)
+    List<String> blackEligibleIds = activeDutyList.map((e) => e.idNumber).where((id) {
+        if (personStats[id]!['isXR']) return true; // XR can do black
+        int existingSlotToday = -1;
+        for (int s = 0; s < 12; s++) {
+            if (newSlots[s].personnelId == id) {
+                existingSlotToday = s;
+                break;
+            }
+        }
+        if (existingSlotToday >= 7 && existingSlotToday <= 10) return false;
+        return true;
+    }).toList();
+
+    int firstTurnSlotsToFill = blackEligibleIds.length;
+    if (firstTurnSlotsToFill > slotsToFill) firstTurnSlotsToFill = slotsToFill;
+    
+    int availablePeople = blackEligibleIds.length;
+    int primaryCount = availablePeople > 8 ? 8 : availablePeople;
+    List<int> primarySlots = remainingSlots.sublist(0, primaryCount);
+    
+    int filledInPhase3A = 0;
+
+    while (filledInPhase3A < firstTurnSlotsToFill) {
       Map<String, dynamic>? bestPair;
 
       for (var p in activeDutyList) {
         String id = p.idNumber;
+        if (!blackEligibleIds.contains(id)) continue;
+        
+        // ONLY 1ST TURN ALLOWED IN PHASE 3A
+        if ((personStats[id]!['assignedToday'] as int) > 0) continue;
+
         for (int i in remainingSlots) {
           if (assignedSlots.contains(i)) continue;
           
           if (personStats[id]!['isXR']) {
              if (i > 3) continue; // XR can only do slots 0-3
-             if (personStats[id]!['assignedToday'] >= 1) continue; // XR gets max 1 duty
           }
 
           bool hasConsecutive = false;
@@ -807,84 +832,52 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
           score -= freq * 2000.0;
           
           if (personStats[id]!['isXR']) {
-              score += 1000000.0; // Ensure XR is never overridden by absentee score
+              score += 1000000.0;
           }
           
           int lastSlot = personStats[id]!['lastSlot'];
           if (lastSlot != -1) {
-              if (lastSlot == i) score -= 10000.0;
+              if (lastSlot == i) score -= 100000.0;
               int expectedSlot = (lastSlot + 1) % 12;
               int diff = (i - expectedSlot).abs();
               if (diff > 6) diff = 12 - diff;
               score -= diff * 100.0;
           }
 
-          int existingSlotToday = -1;
-          for (int s = 0; s < 12; s++) {
-              if (newSlots[s].personnelId == id) {
-                  existingSlotToday = s;
-                  break;
-              }
-          }
-
           int daysAbsent = personStats[id]!['daysSinceLastDuty'];
-          if (daysAbsent > 1 && daysAbsent < 99999) {
-              score += daysAbsent * (12 - i) * 10000.0; // Strict chronological order (0, 1, 2...) for absentees
+          if (daysAbsent > 2 && daysAbsent < 99999) {
+              score += daysAbsent * (12 - i) * 10000.0;
           }
 
-          if (existingSlotToday != -1) {
-              if (existingSlotToday >= 7 && existingSlotToday <= 10) {
-                  continue; // Exclude Red/Green duty personnel from extra Black duties
-              }
-
-              // Earliest duty gets highest priority for extra duty
-              score += (12 - existingSlotToday) * 100000.0;
-              
-              if (daysAbsent > 1 && daysAbsent < 99999) {
-                  score += daysAbsent * 10000.0; // Massive boost for extra duties
-              }
-              
-              int gap = (i - existingSlotToday).abs();
-              if (gap < 4) {
-                  score -= 1000.0;
-              }
+          if (primarySlots.contains(i)) {
+              score += 20000.0;
           }
-
-          int duties = personStats[id]!['assignedToday'];
 
           var currentPair = {
             'person': p,
             'slot': i,
             'score': score,
-            'duties': duties,
           };
 
           if (bestPair == null) {
             bestPair = currentPair;
           } else {
-            int dCmp = (currentPair['duties'] as int).compareTo(
-              bestPair['duties'] as int,
-            );
-            if (dCmp < 0) {
-              bestPair = currentPair;
-            } else if (dCmp == 0) {
-                int sCmp = (currentPair['score'] as double).compareTo(
-                  bestPair['score'] as double,
-                );
-                if (sCmp > 0) {
-                  bestPair = currentPair;
-                } else if (sCmp == 0) {
-                   int daysA = personStats[id]!['daysSinceLastDuty'];
-                   int daysB = personStats[bestPair['person'].idNumber]!['daysSinceLastDuty'];
-                   if (daysA > daysB) {
-                       bestPair = currentPair;
-                   } else if (daysA == daysB) {
-                       if (p.sortOrder < (bestPair['person'] as Manpower).sortOrder) {
-                           bestPair = currentPair;
-                       }
-                   }
-                }
-            }
+             int sCmp = (currentPair['score'] as double).compareTo(
+                bestPair['score'] as double,
+             );
+             if (sCmp > 0) {
+                bestPair = currentPair;
+             } else if (sCmp == 0) {
+                 int daysA = personStats[id]!['daysSinceLastDuty'];
+                 int daysB = personStats[bestPair['person'].idNumber]!['daysSinceLastDuty'];
+                 if (daysA > daysB) {
+                     bestPair = currentPair;
+                 } else if (daysA == daysB) {
+                     if (p.sortOrder < (bestPair['person'] as Manpower).sortOrder) {
+                         bestPair = currentPair;
+                     }
+                 }
+             }
           }
         }
       }
@@ -900,10 +893,61 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
         );
         personStats[id]!['assignedToday'] = (personStats[id]!['assignedToday'] as int) + 1;
         assignedSlots.add(slot);
-        filledInPhase3++;
+        filledInPhase3A++;
       } else {
-        break; // No eligible person found for any remaining slot
+        break; // No eligible person found
       }
+    }
+
+    // PHASE 3B: Second Turn (Fixed Mapping for Shortages)
+    List<int> emptyBlackSlots = remainingSlots.where((s) => !assignedSlots.contains(s)).toList();
+    if (emptyBlackSlots.isNotEmpty && blackEligibleIds.isNotEmpty) {
+       // Get personnel who got a black slot today, sorted by the slot they got (chronological)
+       List<Map<String, dynamic>> filledBlackPersonnel = [];
+       for (String id in blackEligibleIds) {
+           if (personStats[id]!['isXR']) continue; // XR strictly max 1 duty
+           int existingSlot = -1;
+           for (int s in remainingSlots) {
+               if (newSlots[s].personnelId == id) {
+                   existingSlot = s;
+                   break;
+               }
+           }
+           if (existingSlot != -1) {
+               filledBlackPersonnel.add({'id': id, 'slot': existingSlot});
+           }
+       }
+       
+       filledBlackPersonnel.sort((a, b) => (a['slot'] as int).compareTo(b['slot'] as int));
+       
+       if (filledBlackPersonnel.isNotEmpty) {
+           for (int i = 0; i < emptyBlackSlots.length; i++) {
+               int emptySlot = emptyBlackSlots[i];
+               // Fixed mapping: ith empty slot goes to ith personnel (wrapping around if needed)
+               String assignedId = filledBlackPersonnel[i % filledBlackPersonnel.length]['id'];
+               
+               // Avoid consecutive if possible by swapping with the next person in line
+               bool isConsecutive(String pId, int slot) {
+                   if (slot > 0 && newSlots[slot - 1].personnelId == pId) return true;
+                   if (slot < 11 && newSlots[slot + 1].personnelId == pId) return true;
+                   return false;
+               }
+               
+               if (isConsecutive(assignedId, emptySlot) && filledBlackPersonnel.length > 1) {
+                   String nextId = filledBlackPersonnel[(i + 1) % filledBlackPersonnel.length]['id'];
+                   if (!isConsecutive(nextId, emptySlot)) {
+                       assignedId = nextId;
+                   }
+               }
+
+               newSlots[emptySlot] = SentrySlot(
+                   timeLabel: _timeLabels[emptySlot],
+                   personnelId: assignedId,
+               );
+               personStats[assignedId]!['assignedToday'] = (personStats[assignedId]!['assignedToday'] as int) + 1;
+               assignedSlots.add(emptySlot);
+           }
+       }
     }
     
     setState(() {
