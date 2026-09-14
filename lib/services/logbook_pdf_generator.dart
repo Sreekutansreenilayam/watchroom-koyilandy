@@ -307,7 +307,7 @@ class LogbookPdfGenerator {
             ),
             SizedBox(width: 35, child: tableHeaderCell('പുറപ്പെടുന്ന\nസമയം', unit: 'മ. മി.')),
             Expanded(
-              flex: 2,
+              flex: 20,
               child: Column(
                 children: [
                   Container(
@@ -331,7 +331,7 @@ class LogbookPdfGenerator {
             SizedBox(width: 35, child: tableHeaderCell('എത്തിച്ചേരുന്ന\nസമയം', unit: 'മ. മി.')),
             SizedBox(width: 35, child: tableHeaderCell('യാത്ര ചെയ്ത\nദൂരം', unit: 'കി. മീ.')),
             SizedBox(
-              width: 118,
+              width: 126,
               child: Column(
                 children: [
                   Container(
@@ -347,7 +347,7 @@ class LogbookPdfGenerator {
                         SizedBox(width: 35, child: tableHeaderCell('ആരംഭിച്ചത്', unit: 'മ. മി.')),
                         SizedBox(width: 35, child: tableHeaderCell('അവസാനിച്ചത്', unit: 'മ. മി.')),
                         SizedBox(
-                          width: 48,
+                          width: 56,
                           child: Container(
                             padding: const EdgeInsets.all(2.0),
                             alignment: Alignment.bottomCenter,
@@ -383,7 +383,7 @@ class LogbookPdfGenerator {
               ),
             ),
             SizedBox(
-              width: 120,
+              width: 90,
               child: Column(
                 children: [
                   Container(
@@ -396,9 +396,9 @@ class LogbookPdfGenerator {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        SizedBox(width: 40, child: tableHeaderCell('യാത്ര', unit: 'ലി.')),
-                        SizedBox(width: 40, child: tableHeaderCell('പമ്പ്', unit: 'ലി.')),
-                        SizedBox(width: 40, child: tableHeaderCell('ഡി. എസ്.', unit: 'ലി.')),
+                        SizedBox(width: 30, child: tableHeaderCell('യാത്ര', unit: 'ലി.')),
+                        SizedBox(width: 30, child: tableHeaderCell('പമ്പ്', unit: 'ലി.')),
+                        SizedBox(width: 30, child: tableHeaderCell('ഡി. എസ്.', unit: 'ലി.')),
                       ],
                     ),
                   )
@@ -406,7 +406,7 @@ class LogbookPdfGenerator {
               ),
             ),
             Expanded(
-              flex: 2,
+              flex: 18,
               child: Container(
                 padding: const EdgeInsets.all(2.0),
                 alignment: Alignment.center,
@@ -416,7 +416,7 @@ class LogbookPdfGenerator {
             ),
             SizedBox(width: 35, child: tableHeaderCell('വാഹനം ചാർജ്ജ്\nഎടുക്കുന്ന സമയം', unit: 'മ. മി.')),
             Expanded(
-              flex: 1,
+              flex: 12,
               child: Container(
                 padding: const EdgeInsets.all(2.0),
                 alignment: Alignment.center,
@@ -460,19 +460,19 @@ class LogbookPdfGenerator {
               SizedBox(width: 25, child: _wrapCellWithBorder(cells[6])),
               SizedBox(width: 25, child: _wrapCellWithBorder(cells[7])),
               SizedBox(width: 35, child: _wrapCellWithBorder(cells[8])),
-              Expanded(flex: 1, child: _wrapCellWithBorder(cells[9])),
-              Expanded(flex: 1, child: _wrapCellWithBorder(cells[10])),
+              Expanded(flex: 10, child: _wrapCellWithBorder(cells[9])),
+              Expanded(flex: 10, child: _wrapCellWithBorder(cells[10])),
               SizedBox(width: 35, child: _wrapCellWithBorder(cells[11])),
               SizedBox(width: 35, child: _wrapCellWithBorder(cells[12])),
               SizedBox(width: 35, child: _wrapCellWithBorder(cells[13])),
               SizedBox(width: 35, child: _wrapCellWithBorder(cells[14])),
-              SizedBox(width: 48, child: _wrapCellWithBorder(cells[15])),
-              SizedBox(width: 40, child: _wrapCellWithBorder(cells[16])),
-              SizedBox(width: 40, child: _wrapCellWithBorder(cells[17])),
-              SizedBox(width: 40, child: _wrapCellWithBorder(cells[18])),
-              Expanded(flex: 2, child: _wrapCellWithBorder(cells[19])),
+              SizedBox(width: 56, child: _wrapCellWithBorder(cells[15])),
+              SizedBox(width: 30, child: _wrapCellWithBorder(cells[16])),
+              SizedBox(width: 30, child: _wrapCellWithBorder(cells[17])),
+              SizedBox(width: 30, child: _wrapCellWithBorder(cells[18])),
+              Expanded(flex: 18, child: _wrapCellWithBorder(cells[19])),
               SizedBox(width: 35, child: _wrapCellWithBorder(cells[20])),
-              Expanded(flex: 1, child: _wrapCellWithBorder(cells[21])),
+              Expanded(flex: 12, child: _wrapCellWithBorder(cells[21])),
             ],
           ),
         ),
@@ -550,8 +550,8 @@ class LogbookPdfGenerator {
         tableCell(formatFuel(isSaturdayDS ? 0 : e.fuelConsumedForPump)),
         tableCell(isSaturdayDS ? formatFuel(e.fuelConsumedForPump) : '-'),
         tableCell(formatTextOrDash(e.remarks), maxLines: null, textAlign: TextAlign.left, alignment: Alignment.centerLeft), 
-        tableCell(formatTextOrDash(e.vehicleCheckTime)),
-        tableCell(formatTextOrDash(e.operatorName)),
+        tableCell(isTakingOnCharge ? formatTextOrDash(e.vehicleCheckTime) : '-'),
+        tableCell(formatTextOrDash(e.operatorName).replaceFirst(RegExp(r'\s*\('), '\n(')),
       ]));
       
       runningKm += e.travelledDistance + e.pumpKm;

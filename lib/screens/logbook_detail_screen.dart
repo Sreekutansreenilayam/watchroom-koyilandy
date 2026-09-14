@@ -300,6 +300,11 @@ class _LogbookDetailScreenState extends State<LogbookDetailScreen> {
                   ),
                   Expanded(
                     child: PdfPreview(
+        allowSharing: true,
+        allowPrinting: true,
+        canChangePageFormat: false,
+        canChangeOrientation: false,
+        canDebug: false,
                       build: (format) async {
                         return await LogbookPdfGenerator.generatePdf(
                           context,
@@ -308,11 +313,11 @@ class _LogbookDetailScreenState extends State<LogbookDetailScreen> {
                           _selectedMonth
                         );
                       },
-                      allowPrinting: true,
-                      allowSharing: true,
-                      canChangeOrientation: false,
-                      canChangePageFormat: false,
-                      canDebug: false,
+                      
+                      
+                      
+                      
+                      
                     ),
                   ),
                   Container(

@@ -21,6 +21,11 @@ class EquipmentPdfPreviewScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Equipment Report PDF')),
       body: PdfPreview(
+        allowSharing: true,
+        allowPrinting: true,
+        canChangePageFormat: false,
+        canChangeOrientation: false,
+        canDebug: false,
         build: (format) => EquipmentPdfGenerator.generateEquipmentReportPdf(
           categories: categories,
           includeDetails: includeDetails,

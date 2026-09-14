@@ -220,11 +220,16 @@ class _FridayParadestateScreenState extends State<FridayParadestateScreen> {
                   : ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: PdfPreview(
+        allowSharing: true,
+        allowPrinting: true,
+        canChangePageFormat: false,
+        canChangeOrientation: false,
+        canDebug: false,
                         build: (format) => _pdfBytes!,
-                        allowPrinting: true,
-                        allowSharing: true,
-                        canChangeOrientation: false,
-                        canChangePageFormat: false,
+                        
+                        
+                        
+                        
                         initialPageFormat: PdfPageFormat.a4.landscape,
                         pdfFileName: 'Paradestate_${DateFormat('dd_MM_yyyy').format(_selectedDate)}.pdf',
                       ),

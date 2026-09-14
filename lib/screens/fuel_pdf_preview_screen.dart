@@ -14,6 +14,11 @@ class FuelPdfPreviewScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Fuel Ledger PDF')),
       body: PdfPreview(
+        allowSharing: true,
+        allowPrinting: true,
+        canChangePageFormat: false,
+        canChangeOrientation: false,
+        canDebug: false,
         build: (format) => FuelPdfService.generateStockRegister(ledger, transactions),
       ),
     );

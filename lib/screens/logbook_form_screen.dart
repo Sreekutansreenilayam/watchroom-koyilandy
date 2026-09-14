@@ -1486,11 +1486,6 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
                   final allEntries = provider.entries;
                   final success = await provider.deleteEntry(entryToDelete.id, widget.vehicle.id);
                   if (success && mounted) {
-                    await context.read<VehicleProvider>().revertVehicleMasterOnEntryDelete(
-                      vehicleId: widget.vehicle.id,
-                      entryToDelete: entryToDelete,
-                      remainingEntries: allEntries,
-                    );
                     Navigator.pop(context);
                   }
                 }

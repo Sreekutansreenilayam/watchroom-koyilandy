@@ -12,6 +12,11 @@ class HoseRegisterPdfPreviewScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Hose Register PDF')),
       body: PdfPreview(
+        allowSharing: true,
+        allowPrinting: true,
+        canChangePageFormat: false,
+        canChangeOrientation: false,
+        canDebug: false,
         build: (format) => HoseRegisterPdfGenerator.generatePdf(context, hoseName),
       ),
     );

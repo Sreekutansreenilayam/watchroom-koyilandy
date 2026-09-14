@@ -600,6 +600,9 @@ class _DutyScreenState extends State<DutyScreen> {
                          r.date.day == _selectedDate.day;
                 });
 
+                // Ensure attendance data is fully loaded for the selected date before generating PDF
+                await context.read<AttendanceProvider>().loadAttendanceForMonth(_selectedDate);
+
                 if (context.mounted) {
                   Navigator.push(
                     context,

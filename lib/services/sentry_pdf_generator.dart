@@ -115,17 +115,24 @@ class SentryPdfGenerator {
       headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
       headerHeight: 25,
       cellHeight: 25,
-      cellAlignments: {0: pw.Alignment.center, 1: pw.Alignment.centerLeft},
-      headers: ['Time Slot', 'Personnel Name'],
+      columnWidths: const {
+        0: pw.FlexColumnWidth(2.5),
+        1: pw.FlexColumnWidth(2.5),
+        2: pw.FlexColumnWidth(5.0),
+      },
+      cellAlignments: {0: pw.Alignment.center, 1: pw.Alignment.center, 2: pw.Alignment.centerLeft},
+      headers: ['Time Slot', 'ID Number', 'Personnel Name'],
       data: reg.slots.map((s) {
         String name = '-';
+        String idNumber = '-';
         if (s.personnelId.isNotEmpty) {
           final p = personnelList
               .where((m) => m.idNumber == s.personnelId)
               .firstOrNull;
           name = p != null ? p.name : s.personnelId;
+          idNumber = s.personnelId;
         }
-        return [s.timeLabel, name];
+        return [s.timeLabel, idNumber, name];
       }).toList(),
     );
   }
@@ -143,15 +150,21 @@ class SentryPdfGenerator {
       headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
       headerHeight: 25,
       cellHeight: 25,
+      columnWidths: const {
+        0: pw.FlexColumnWidth(1.0),
+        1: pw.FlexColumnWidth(2.5),
+        2: pw.FlexColumnWidth(6.5),
+      },
       cellAlignments: {
         0: pw.Alignment.center,
-        1: pw.Alignment.centerLeft,
+        1: pw.Alignment.center,
+        2: pw.Alignment.centerLeft,
       },
-      headers: ['Sl No', 'Personnel Name'],
+      headers: ['Sl No', 'ID Number', 'Personnel Name'],
       data: List.generate(reg.spares.length, (index) {
         final id = reg.spares[index];
         final p = personnelList.where((m) => m.idNumber == id).firstOrNull;
-        return [(index + 1).toString(), p?.name ?? id];
+        return [(index + 1).toString(), id, p?.name ?? id];
       }),
     );
   }

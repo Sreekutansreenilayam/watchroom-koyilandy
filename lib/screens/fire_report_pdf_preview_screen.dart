@@ -16,6 +16,11 @@ class FireReportPdfPreviewScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Fire Report PDF')),
       body: PdfPreview(
+        allowSharing: true,
+        allowPrinting: true,
+        canChangePageFormat: false,
+        canChangeOrientation: false,
+        canDebug: false,
         build: (format) => FireReportPdfGenerator.generatePdf(
           context,
           report,

@@ -46,22 +46,47 @@ class LogbookProvider with ChangeNotifier {
         }).toList();
 
         _entries.sort((a, b) {
-          DateTime aDateOnly = DateTime(a.date.year, a.date.month, a.date.day);
-          DateTime bDateOnly = DateTime(b.date.year, b.date.month, b.date.day);
-          int dateCmp = aDateOnly.compareTo(bDateOnly);
+          String getTime(LogbookEntry e) {
+            if (e.actionType == 'Taking on Charge' || e.actionType == 'Emergency Taking on Charge') {
+              if (e.vehicleCheckTime.isNotEmpty) return e.vehicleCheckTime;
+            }
+            if (e.departureTime.isNotEmpty) return e.departureTime;
+            if (e.pumpStartTime.isNotEmpty) return e.pumpStartTime;
+            if (e.arrivalTime.isNotEmpty) return e.arrivalTime;
+            if (e.vehicleCheckTime.isNotEmpty) return e.vehicleCheckTime;
+            return '23:59';
+          }
+
+          String aTime = getTime(a);
+          String bTime = getTime(b);
+
+          DateTime getDutyDate(LogbookEntry e, String timeStr) {
+            int h = 0;
+            if (timeStr.isNotEmpty) {
+              final p = timeStr.split(':');
+              if (p.isNotEmpty) h = int.tryParse(p[0]) ?? 0;
+            }
+            if (h < 9) {
+              return DateTime(e.date.year, e.date.month, e.date.day).subtract(const Duration(days: 1));
+            }
+            return DateTime(e.date.year, e.date.month, e.date.day);
+          }
+
+          DateTime aDutyDate = getDutyDate(a, aTime);
+          DateTime bDutyDate = getDutyDate(b, bTime);
+
+          int dateCmp = aDutyDate.compareTo(bDutyDate);
           if (dateCmp != 0) return dateCmp;
+
+          int aMins = AccessControl.timeToDutyMinutes(aTime);
+          int bMins = AccessControl.timeToDutyMinutes(bTime);
+          int timeCmp = aMins.compareTo(bMins);
+          if (timeCmp != 0) return timeCmp;
 
           bool aIsTake = a.actionType == 'Taking on Charge' || a.actionType == 'Emergency Taking on Charge';
           bool bIsTake = b.actionType == 'Taking on Charge' || b.actionType == 'Emergency Taking on Charge';
           if (aIsTake && !bIsTake) return -1;
           if (!aIsTake && bIsTake) return 1;
-
-          String aTime = a.departureTime.isNotEmpty ? a.departureTime : (a.pumpStartTime.isNotEmpty ? a.pumpStartTime : '23:59');
-          String bTime = b.departureTime.isNotEmpty ? b.departureTime : (b.pumpStartTime.isNotEmpty ? b.pumpStartTime : '23:59');
-          int aMins = AccessControl.timeToDutyMinutes(aTime);
-          int bMins = AccessControl.timeToDutyMinutes(bTime);
-          int timeCmp = aMins.compareTo(bMins);
-          if (timeCmp != 0) return timeCmp;
           
           if (a.actionType == 'Fuel Receipt' && b.actionType == 'Fuel Receipt') {
             int getSerial(String r) {
@@ -101,6 +126,7 @@ class LogbookProvider with ChangeNotifier {
 
     try {
       await _firestore.collection('logbooks').add(entry.toMap());
+      await cascadeUpdates(entry.vehicleId);
       _isLoading = false;
       notifyListeners();
       return true;

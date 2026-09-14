@@ -22,6 +22,11 @@ class DutyRoasterPdfPreviewScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Duty Roaster PDF')),
       body: PdfPreview(
+        allowSharing: true,
+        allowPrinting: true,
+        canChangePageFormat: false,
+        canChangeOrientation: false,
+        canDebug: false,
         build: (format) => DutyRoasterPdfGenerator.generatePdf(
           startDate,
           endDate,
