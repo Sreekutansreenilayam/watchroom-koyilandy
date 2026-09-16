@@ -9,7 +9,13 @@ import '../models/logbook_model.dart';
 import '../models/vehicle_model.dart';
 
 class LogbookPdfGenerator {
-  static Future<Uint8List> generatePdf(BuildContext context, VehicleModel vehicle, List<LogbookEntry> entries, DateTime monthYear) async {
+  static Future<Uint8List> generatePdf(
+      BuildContext context, 
+      VehicleModel vehicle, 
+      List<LogbookEntry> entries, 
+      DateTime monthYear,
+      {int pageIndex = -1, int itemsPerPage = 15}
+  ) async {
     final pdf = pw.Document();
     final screenshotController = ScreenshotController();
 
@@ -514,6 +520,15 @@ class LogbookPdfGenerator {
     double runningFuel = openingFuel;
     final Set<String> tableProcessedDSSaturdays = {};
 
+    int startIndex = 0;
+    int endIndex = entries.length;
+
+    if (pageIndex >= 0) {
+      startIndex = pageIndex * itemsPerPage;
+      endIndex = startIndex + itemsPerPage;
+      if (endIndex > entries.length) endIndex = entries.length;
+    }
+
     for (int index = 0; index < entries.length; index++) {
       final e = entries[index];
       
@@ -529,37 +544,44 @@ class LogbookPdfGenerator {
         }
       }
 
-      dataRowWidgets.add(buildDataRow([
-        tableCell(DateFormat('dd/MM/yy').format(e.date)),
-        tableCell(runningKm.toInt().toString()),
-        tableCell(formatFuel(runningFuel)),
-        tableCell(formatFuel(e.suppliedFuel)),
-        tableCell(formatFuel(e.oil)),
-        tableCell(formatFuel(e.grease)),
-        tableCell(formatFuel(e.dWater)),
-        tableCell(formatFuel(e.adBlue)),
-        tableCell(formatTextOrDash(e.departureTime)),
-        tableCell(isTakingOnCharge ? '-' : formatTextOrDash(e.fromPlace)),
-        tableCell(isTakingOnCharge ? '-' : formatTextOrDash(e.toPlace)),
-        tableCell(formatTextOrDash(e.arrivalTime)),
-        tableCell(formatNumOrDash(e.travelledDistance)),
-        tableCell(formatTextOrDash(e.pumpStartTime)),
-        tableCell(formatTextOrDash(e.pumpEndTime)),
-        buildPumpDurationAndKmCell(e),
-        tableCell(formatFuel(e.fuelConsumedForJourney)),
-        tableCell(formatFuel(isSaturdayDS ? 0 : e.fuelConsumedForPump)),
-        tableCell(isSaturdayDS ? formatFuel(e.fuelConsumedForPump) : '-'),
-        tableCell(formatTextOrDash(e.remarks), maxLines: null, textAlign: TextAlign.left, alignment: Alignment.centerLeft), 
-        tableCell(isTakingOnCharge ? formatTextOrDash(e.vehicleCheckTime) : '-'),
-        tableCell(formatTextOrDash(e.operatorName).replaceFirst(RegExp(r'\s*\('), '\n(')),
-      ]));
+      if (index >= startIndex && index < endIndex) {
+        dataRowWidgets.add(buildDataRow([
+          tableCell(DateFormat('dd/MM/yy').format(e.date)),
+          tableCell(runningKm.toInt().toString()),
+          tableCell(formatFuel(runningFuel)),
+          tableCell(formatFuel(e.suppliedFuel)),
+          tableCell(formatFuel(e.oil)),
+          tableCell(formatFuel(e.grease)),
+          tableCell(formatFuel(e.dWater)),
+          tableCell(formatFuel(e.adBlue)),
+          tableCell(formatTextOrDash(e.departureTime)),
+          tableCell(isTakingOnCharge ? '-' : formatTextOrDash(e.fromPlace)),
+          tableCell(isTakingOnCharge ? '-' : formatTextOrDash(e.toPlace)),
+          tableCell(formatTextOrDash(e.arrivalTime)),
+          tableCell(formatNumOrDash(e.travelledDistance)),
+          tableCell(formatTextOrDash(e.pumpStartTime)),
+          tableCell(formatTextOrDash(e.pumpEndTime)),
+          buildPumpDurationAndKmCell(e),
+          tableCell(formatFuel(e.fuelConsumedForJourney)),
+          tableCell(formatFuel(isSaturdayDS ? 0 : e.fuelConsumedForPump)),
+          tableCell(isSaturdayDS ? formatFuel(e.fuelConsumedForPump) : '-'),
+          tableCell(formatTextOrDash(e.remarks), maxLines: null, textAlign: TextAlign.left, alignment: Alignment.centerLeft), 
+          tableCell(isTakingOnCharge ? formatTextOrDash(e.vehicleCheckTime) : '-'),
+          tableCell(formatTextOrDash(e.operatorName).replaceFirst(RegExp(r'\s*\('), '\n(')),
+        ]));
+      }
       
       runningKm += e.travelledDistance + e.pumpKm;
       runningFuel = runningFuel + e.suppliedFuel - e.fuelConsumedForJourney - e.fuelConsumedForPump;
     }
 
-    DateTime closingDate = entries.isNotEmpty ? entries.last.date : DateTime(monthYear.year, monthYear.month, 1);
-    dataRowWidgets.add(buildBoldRow(closingDate, runningKm, runningFuel));
+    int totalPages = (entries.length / itemsPerPage).ceil();
+    if (totalPages == 0) totalPages = 1;
+    
+    if (pageIndex == -1 || pageIndex == totalPages - 1 || entries.isEmpty) {
+      DateTime closingDate = entries.isNotEmpty ? entries.last.date : DateTime(monthYear.year, monthYear.month, 1);
+      dataRowWidgets.add(buildBoldRow(closingDate, runningKm, runningFuel));
+    }
 
     Widget buildSummaryRow(String text, String value, {String unit = 'ലിറ്റർ', bool isPlus = false, bool isMinus = false}) {
       return Padding(
@@ -702,23 +724,26 @@ class LogbookPdfGenerator {
     }
 
     pdf.addPage(
-      pw.MultiPage(
+      pw.Page(
         pageFormat: PdfPageFormat.a4.landscape,
         margin: const pw.EdgeInsets.all(32),
-        header: (pw.Context context) {
-          if (context.pageNumber == 1) {
-            return pw.SizedBox();
-          }
-          return buildPdfImage(headerImageBytes, 'Header');
-        },
         build: (pw.Context context) {
-          return [
-            buildPdfImage(titleImage, 'Title'),
-            buildPdfImage(headerImageBytes, 'Header'),
-            for (int i = 0; i < capturedRowImages.length; i++)
-              buildPdfImage(capturedRowImages[i], 'Row $i'),
-            buildPdfImage(footerImage, 'Footer'),
-          ];
+          return pw.Center(
+            child: pw.FittedBox(
+              fit: pw.BoxFit.contain,
+              child: pw.Column(
+                mainAxisSize: pw.MainAxisSize.min,
+                children: [
+                  buildPdfImage(titleImage, 'Title'),
+                  buildPdfImage(headerImageBytes, 'Header'),
+                  for (int i = 0; i < capturedRowImages.length; i++)
+                    buildPdfImage(capturedRowImages[i], 'Row $i'),
+                  if (pageIndex == -1 || pageIndex == totalPages - 1 || entries.isEmpty)
+                    buildPdfImage(footerImage, 'Footer'),
+                ],
+              ),
+            ),
+          );
         },
       ),
     );

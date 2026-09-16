@@ -23,6 +23,8 @@ class LogbookDetailScreen extends StatefulWidget {
 
 class _LogbookDetailScreenState extends State<LogbookDetailScreen> {
   DateTime _selectedMonth = DateTime.now();
+  int? _currentPage;
+  final int _itemsPerPage = 15;
 
   @override
   void initState() {
@@ -33,6 +35,9 @@ class _LogbookDetailScreenState extends State<LogbookDetailScreen> {
   }
 
   void _fetchData() {
+    setState(() {
+      _currentPage = null;
+    });
     context.read<LogbookProvider>().fetchEntries(widget.vehicle.id, _selectedMonth);
   }
 
@@ -258,6 +263,36 @@ class _LogbookDetailScreenState extends State<LogbookDetailScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('PDF Preview (Full)')),
+                    body: PdfPreview(
+                      allowSharing: true,
+                      allowPrinting: true,
+                      canChangePageFormat: false,
+                      canChangeOrientation: false,
+                      canDebug: false,
+                      build: (format) async {
+                        return await LogbookPdfGenerator.generatePdf(
+                          context,
+                          widget.vehicle,
+                          context.read<LogbookProvider>().entries,
+                          _selectedMonth,
+                          pageIndex: -1 // Generates full PDF
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
+            tooltip: 'View Full PDF',
+          ),
+          IconButton(
             icon: const Icon(Icons.calendar_month),
             onPressed: () => _selectMonth(context),
             tooltip: 'Select Month',
@@ -283,6 +318,13 @@ class _LogbookDetailScreenState extends State<LogbookDetailScreen> {
                 return const Center(child: CircularProgressIndicator(color: Color(0xFFE53935)));
               }
 
+              int totalPages = (provider.entries.length / _itemsPerPage).ceil();
+              if (totalPages == 0) totalPages = 1;
+
+              int displayPage = _currentPage ?? (totalPages - 1);
+              if (displayPage >= totalPages) displayPage = totalPages - 1;
+              if (displayPage < 0) displayPage = 0;
+
               return Column(
                 children: [
                   Container(
@@ -298,27 +340,62 @@ class _LogbookDetailScreenState extends State<LogbookDetailScreen> {
                       ],
                     ),
                   ),
-                  Expanded(
-                    child: PdfPreview(
-        allowSharing: true,
-        allowPrinting: true,
-        canChangePageFormat: false,
-        canChangeOrientation: false,
-        canDebug: false,
-                      build: (format) async {
-                        return await LogbookPdfGenerator.generatePdf(
-                          context,
-                          widget.vehicle,
-                          provider.entries,
-                          _selectedMonth
-                        );
-                      },
-                      
-                      
-                      
-                      
-                      
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    color: Colors.black12,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left, color: Colors.white, size: 32),
+                          onPressed: displayPage > 0 ? () {
+                            setState(() {
+                              _currentPage = displayPage - 1;
+                            });
+                          } : null,
+                        ),
+                        Text(
+                          'Page ${displayPage + 1} of $totalPages',
+                          style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right, color: Colors.white, size: 32),
+                          onPressed: displayPage < totalPages - 1 ? () {
+                            setState(() {
+                              _currentPage = displayPage + 1;
+                            });
+                          } : null,
+                        ),
+                      ],
                     ),
+                  ),
+                  Expanded(
+                    child: provider.entries.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'ഈ മാസം എൻട്രികൾ ഒന്നും ലഭ്യമല്ല',
+                              style: TextStyle(color: Colors.white70, fontSize: 16),
+                            ),
+                          )
+                        : PdfPreview(
+                            allowSharing: false,
+                            allowPrinting: false,
+                            canChangePageFormat: false,
+                            canChangeOrientation: false,
+                            canDebug: false,
+                            useActions: false, // hide default actions
+                            maxPageWidth: MediaQuery.of(context).size.width,
+                            build: (format) async {
+                              return await LogbookPdfGenerator.generatePdf(
+                                context,
+                                widget.vehicle,
+                                provider.entries,
+                                _selectedMonth,
+                                pageIndex: displayPage,
+                                itemsPerPage: _itemsPerPage,
+                              );
+                            },
+                          ),
                   ),
                   Container(
                     padding: const EdgeInsets.all(16),
