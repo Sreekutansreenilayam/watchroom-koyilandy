@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../config/app_config.dart';
 
 class VoucherItem {
   final String ledgerPageNo;
@@ -80,7 +81,7 @@ class VoucherModel {
     this.category = 'Misc',
     this.ivNo = '',
     this.issueDate,
-    this.issueStation = 'Fire & Rescue Station, Meenchanda',
+    this.issueStation = '',
     this.rvNo = '',
     this.receiptDate,
     this.receiptStation = '',

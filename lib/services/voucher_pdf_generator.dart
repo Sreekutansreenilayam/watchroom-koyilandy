@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
 import '../models/voucher_model.dart';
+import '../config/app_config.dart';
 
 
 class VoucherPdfGenerator {
@@ -31,7 +32,7 @@ class VoucherPdfGenerator {
             children: [
               pw.Text('RECEIPT/ISSUE VOUCHER', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline, fontSize: 14)),
               pw.SizedBox(height: 4),
-              pw.Text('FIRE AND RESCUE STATION, MEENCHANDA', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline, fontSize: 14)),
+              pw.Text(AppConfig.stationName.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline, fontSize: 14)),
               pw.SizedBox(height: 16),
               
               pw.Container(

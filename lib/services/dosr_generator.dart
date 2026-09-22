@@ -4,6 +4,7 @@ import '../models/manpower_model.dart';
 import '../providers/manpower_provider.dart';
 import '../providers/attendance_provider.dart';
 import '../providers/duty_provider.dart';
+import '../config/app_config.dart';
 
 class DosrGenerator {
   final ManpowerProvider manpowerProvider;
@@ -70,7 +71,7 @@ class DosrGenerator {
     sb.writeln('1.  😴 Personnel Retiring from Duty');
     sb.writeln(' (Batch Out) _ മീഞ്ചന്ത\n');
 
-    Map<String, int> retiringMeenchanda = {};
+    Map<String, int> retiringStation = {};
     Map<String, int> retiringBeach = {};
     int totalRetiring = 0;
 
@@ -86,7 +87,7 @@ class DosrGenerator {
          if (isBeach(p)) {
            retiringBeach[effDesig] = (retiringBeach[effDesig] ?? 0) + 1;
          } else {
-           retiringMeenchanda[effDesig] = (retiringMeenchanda[effDesig] ?? 0) + 1;
+           retiringStation[effDesig] = (retiringStation[effDesig] ?? 0) + 1;
          }
          totalRetiring++;
       }
@@ -114,7 +115,7 @@ class DosrGenerator {
       }
     }
 
-    writeStats(retiringMeenchanda, ['SFRO', 'FRO (D)', 'FRO', 'WFRO', 'KHG']);
+    writeStats(retiringStation, ['SFRO', 'FRO (D)', 'FRO', 'WFRO', 'KHG']);
     
     sb.writeln('\nകോഴിക്കോട് ബീച്ച്');
     sb.writeln('----------------------------');
@@ -127,7 +128,7 @@ class DosrGenerator {
     sb.writeln('2. 🧑🚒 OFFICER ON DUTY ');
     sb.writeln(' Station Charge  _ മീഞ്ചന്ത\n');
 
-    Map<String, int> onDutyMeenchanda = {};
+    Map<String, int> onDutyStation = {};
     Map<String, int> onDutyBeach = {};
     int totalOfficers = 0;
     int totalPersonnel = 0;
@@ -152,25 +153,25 @@ class DosrGenerator {
            if (isTrainee(p)) continue; // Trainees present are handled in training section
            if (todayRegister != null && todayRegister.stationWriterIds.contains(p.idNumber)) continue;
            if (['STO', 'ASTO'].contains(effDesig)) {
-             onDutyMeenchanda[effDesig] = (onDutyMeenchanda[effDesig] ?? 0) + 1;
+             onDutyStation[effDesig] = (onDutyStation[effDesig] ?? 0) + 1;
              totalOfficers++;
            } else {
              if (isBeach(p)) {
                onDutyBeach[effDesig] = (onDutyBeach[effDesig] ?? 0) + 1;
              } else {
-               onDutyMeenchanda[effDesig] = (onDutyMeenchanda[effDesig] ?? 0) + 1;
+               onDutyStation[effDesig] = (onDutyStation[effDesig] ?? 0) + 1;
              }
              totalPersonnel++;
            }
        }
     }
 
-    writeStats(onDutyMeenchanda, ['STO', 'ASTO'], skipExtras: true);
+    writeStats(onDutyStation, ['STO', 'ASTO'], skipExtras: true);
     sb.writeln('\n👉           TOTAL # ${totalOfficers.toString().padLeft(2, '0')}');
 
     sb.writeln('\n3. 🧑🚒 PERSONNAL ON DUTY ');
     sb.writeln('                (മീഞ്ചന്ത)\n');
-    writeStats(onDutyMeenchanda, ['SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO', 'KHG'], skipExtras: true);
+    writeStats(onDutyStation, ['SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO', 'KHG'], skipExtras: true);
 
     sb.writeln('\n(കോഴിക്കോട് ബീച്ച്)');
     sb.writeln('----------------------------');
@@ -184,9 +185,9 @@ class DosrGenerator {
     // 4. Personnel on Leave
     sb.writeln('\n4. 🛑 PERSONNAL ON LEAVE \n');
 
-    Map<String, int> dayOffMeenchanda = {};
+    Map<String, int> dayOffStation = {};
     Map<String, int> dayOffBeach = {};
-    Map<String, int> clMeenchanda = {};
+    Map<String, int> clStation = {};
     int elHpCml = 0;
     int specialDuty = 0;
     int medicalLeave = 0;
@@ -194,9 +195,9 @@ class DosrGenerator {
     int spcl = 0;
     int trainingCount = 0;
     int lwpBeach = 0;
-    int lwpMeenchanda = 0;
+    int lwpStation = 0;
     int sdWaKhgBeach = 0;
-    int sdWaKhgMeenchanda = 0;
+    int sdWaKhgStation = 0;
 
     for (var p in allPersonnel) {
        final status = (attMap[p.id]?.dailyStatus[day] ?? '').toUpperCase();
@@ -213,10 +214,10 @@ class DosrGenerator {
           if (isBeach(p)) {
              dayOffBeach[effDesig] = (dayOffBeach[effDesig] ?? 0) + 1;
           } else {
-             dayOffMeenchanda[effDesig] = (dayOffMeenchanda[effDesig] ?? 0) + 1;
+             dayOffStation[effDesig] = (dayOffStation[effDesig] ?? 0) + 1;
           }
        } else if (status == 'CL') {
-          clMeenchanda[effDesig] = (clMeenchanda[effDesig] ?? 0) + 1;
+          clStation[effDesig] = (clStation[effDesig] ?? 0) + 1;
        } else if (['BH', 'HP', 'RH', 'CML', 'EL', 'HPL'].contains(status)) {
           elHpCml++;
        } else if (status == 'SPCL') {
@@ -226,7 +227,7 @@ class DosrGenerator {
              if (isBeach(p)) {
                 sdWaKhgBeach++;
              } else {
-                sdWaKhgMeenchanda++;
+                sdWaKhgStation++;
              }
           } else {
              specialDuty++;
@@ -239,7 +240,7 @@ class DosrGenerator {
           if (isBeach(p)) {
              lwpBeach++;
           } else {
-             lwpMeenchanda++;
+             lwpStation++;
           }
        }
     }
@@ -252,14 +253,14 @@ class DosrGenerator {
       return total;
     }
 
-    int totalDayOffMeenchanda = getSectionTotal(dayOffMeenchanda, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
+    int totalDayOffStation = getSectionTotal(dayOffStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
     int totalDayOffBeach = getSectionTotal(dayOffBeach, ['FRO (D)']);
-    int totalCl = getSectionTotal(clMeenchanda, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
+    int totalCl = getSectionTotal(clStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
 
     sb.writeln('DAY OFF (മീഞ്ചന്ത)');
     sb.writeln('---------------------');
-    writeStats(dayOffMeenchanda, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
-    sb.writeln('\n👉    TOTAL #.       ${totalDayOffMeenchanda.toString().padLeft(2, '0')}');
+    writeStats(dayOffStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
+    sb.writeln('\n👉    TOTAL #.       ${totalDayOffStation.toString().padLeft(2, '0')}');
 
     sb.writeln('\nDAY OFF (കോഴിക്കോട് ബീച്ച് )');
     sb.writeln('--------------------------------         ');
@@ -268,7 +269,7 @@ class DosrGenerator {
 
     sb.writeln('\nCASUAL LEAVE (CL) ');
     sb.writeln('-------------------------------                      ');
-    writeStats(clMeenchanda, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
+    writeStats(clStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
     sb.writeln('\n👉  TOTAL #.         ${totalCl.toString().padLeft(2, '0')}');
 
     sb.writeln('\n--------------------------------');
@@ -287,9 +288,9 @@ class DosrGenerator {
 
     sb.writeln('\nHOME GUARDS (മീഞ്ചന്ത)');
     sb.writeln('-----------------------------------');
-    sb.writeln('${padDesig('HG. (LWP)')}: ${lwpMeenchanda.toString().padLeft(2, '0')}');
-    sb.writeln('${padDesig('HG. (SD/WA)')}: ${sdWaKhgMeenchanda.toString().padLeft(2, '0')}');
-    sb.writeln('\n👉   TOTAL #.       ${(lwpMeenchanda + sdWaKhgMeenchanda).toString().padLeft(2, '0')}');
+    sb.writeln('${padDesig('HG. (LWP)')}: ${lwpStation.toString().padLeft(2, '0')}');
+    sb.writeln('${padDesig('HG. (SD/WA)')}: ${sdWaKhgStation.toString().padLeft(2, '0')}');
+    sb.writeln('\n👉   TOTAL #.       ${(lwpStation + sdWaKhgStation).toString().padLeft(2, '0')}');
 
     sb.writeln('\nHOME GUARDS (കോഴിക്കോട് ബീച്ച്)');
     sb.writeln('------------------------------------');
@@ -307,8 +308,8 @@ class DosrGenerator {
     for (var p in allPersonnel) {
        if (isBeach(p)) continue;
        
-       // Exclude personnel from other stations (like Kollam) from Meenchanda's actual strength
-       if (p.currentStation.trim().isNotEmpty && p.currentStation.trim().toLowerCase() != 'frs meenchanda') {
+       // Exclude personnel from other stations (like Kollam) from Station's actual strength
+       if (p.currentStation.trim().isNotEmpty && p.currentStation.trim().toLowerCase() != AppConfig.stationNameShort.toLowerCase()) {
            continue;
        }
        
@@ -353,11 +354,11 @@ class DosrGenerator {
                      totalOfficers + 
                      totalPersonnel + 
                      stationWriterCount + 
-                     totalDayOffMeenchanda + 
+                     totalDayOffStation + 
                      totalDayOffBeach + 
                      totalCl + 
                      totalLeavesOthers + 
-                     (lwpMeenchanda + sdWaKhgMeenchanda) + 
+                     (lwpStation + sdWaKhgStation) + 
                      (lwpBeach + sdWaKhgBeach) + 
                      totalVacancy;
 

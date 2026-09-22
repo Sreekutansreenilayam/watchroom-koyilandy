@@ -107,6 +107,63 @@ class FuelProvider with ChangeNotifier {
     }
   }
 
+  Future<void> resetAllFuelData() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final txSnapshot = await _firestore.collection('fuel_transactions').get();
+      final logbookSnapshot = await _firestore.collection('logbooks').where('actionType', isEqualTo: 'Fuel Receipt').get();
+      final ledgerSnapshot = await _firestore.collection('fuel_ledgers').get();
+
+      WriteBatch batch = _firestore.batch();
+      int count = 0;
+
+      for (var doc in txSnapshot.docs) {
+        batch.delete(doc.reference);
+        count++;
+        if (count >= 490) {
+          await batch.commit();
+          batch = _firestore.batch();
+          count = 0;
+        }
+      }
+
+      for (var doc in logbookSnapshot.docs) {
+        batch.delete(doc.reference);
+        count++;
+        if (count >= 490) {
+          await batch.commit();
+          batch = _firestore.batch();
+          count = 0;
+        }
+      }
+
+      for (var doc in ledgerSnapshot.docs) {
+        batch.update(doc.reference, {
+          'currentBalance': 0.0,
+          'lastSerialNumber': 0,
+        });
+        count++;
+        if (count >= 490) {
+          await batch.commit();
+          batch = _firestore.batch();
+          count = 0;
+        }
+      }
+
+      if (count > 0) {
+        await batch.commit();
+      }
+
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> addTransaction({
     required String ledgerId,
     required DateTime date,
@@ -144,7 +201,9 @@ class FuelProvider with ChangeNotifier {
       transactions.sort((a, b) {
         int dateCmp = a.date.compareTo(b.date);
         if (dateCmp != 0) return dateCmp;
-        return 0; // rough sort for simulation
+        int serialA = a.voucherNumber == 'temp' ? 999999 : (int.tryParse(a.voucherNumber.split('/').last) ?? 0);
+        int serialB = b.voucherNumber == 'temp' ? 999999 : (int.tryParse(b.voucherNumber.split('/').last) ?? 0);
+        return serialA.compareTo(serialB);
       });
 
       double simBalance = 0;
@@ -240,7 +299,7 @@ class FuelProvider with ChangeNotifier {
             pumpDuration: '',
             fuelConsumedForJourney: 0,
             fuelConsumedForPump: 0,
-            remarks: 'സ്റ്റോറിൽ നിന്നും ${quantity % 1 == 0 ? quantity.toInt() : quantity.toStringAsFixed(1)} ലിറ്റർ $itemName കൈപ്പറ്റി. വൗച്ചർ നമ്പർ: $voucherNumber',
+            remarks: 'സ്റ്റോറിൽ നിന്നും ${quantity % 1 == 0 ? quantity.toInt() : quantity.toStringAsFixed(3)} ലിറ്റർ $itemName കൈപ്പറ്റി. വൗച്ചർ നമ്പർ: $voucherNumber',
             vehicleCheckTime: '',
             operatorName: operatorName,
             actionType: 'Fuel Receipt',
@@ -368,7 +427,9 @@ class FuelProvider with ChangeNotifier {
       transactions.sort((a, b) {
         int dateCmp = a.date.compareTo(b.date);
         if (dateCmp != 0) return dateCmp;
-        return 0;
+        int serialA = a.voucherNumber == 'temp' ? 999999 : (int.tryParse(a.voucherNumber.split('/').last) ?? 0);
+        int serialB = b.voucherNumber == 'temp' ? 999999 : (int.tryParse(b.voucherNumber.split('/').last) ?? 0);
+        return serialA.compareTo(serialB);
       });
 
       double simBalance = 0;
@@ -426,7 +487,7 @@ class FuelProvider with ChangeNotifier {
           'grease': supGrease,
           'dWater': supDWater,
           'adBlue': supAdBlue,
-          'remarks': 'സ്റ്റോറിൽ നിന്നും ${quantity % 1 == 0 ? quantity.toInt() : quantity.toStringAsFixed(1)} ലിറ്റർ $itemName കൈപ്പറ്റി. വൗച്ചർ നമ്പർ: ${tx.voucherNumber}',
+          'remarks': 'സ്റ്റോറിൽ നിന്നും ${quantity % 1 == 0 ? quantity.toInt() : quantity.toStringAsFixed(3)} ലിറ്റർ $itemName കൈപ്പറ്റി. വൗച്ചർ നമ്പർ: ${tx.voucherNumber}',
         });
       }
       await _recalculateLedgerBalances(tx.ledgerId);

@@ -723,30 +723,71 @@ class LogbookPdfGenerator {
       );
     }
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.all(32),
-        build: (pw.Context context) {
-          return pw.Center(
-            child: pw.FittedBox(
-              fit: pw.BoxFit.contain,
-              child: pw.Column(
-                mainAxisSize: pw.MainAxisSize.min,
-                children: [
-                  buildPdfImage(titleImage, 'Title'),
-                  buildPdfImage(headerImageBytes, 'Header'),
-                  for (int i = 0; i < capturedRowImages.length; i++)
-                    buildPdfImage(capturedRowImages[i], 'Row $i'),
-                  if (pageIndex == -1 || pageIndex == totalPages - 1 || entries.isEmpty)
-                    buildPdfImage(footerImage, 'Footer'),
-                ],
+    if (pageIndex == -1) {
+      for (int p = 0; p < totalPages; p++) {
+        int start = p * itemsPerPage;
+        int end = start + itemsPerPage;
+        
+        bool isLastPage = p == totalPages - 1;
+        if (isLastPage) {
+          end = capturedRowImages.length;
+        } else if (end > capturedRowImages.length) {
+          end = capturedRowImages.length;
+        }
+
+        List<Uint8List> pageRowImages = capturedRowImages.sublist(start, end);
+        
+        pdf.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4.landscape,
+            margin: const pw.EdgeInsets.all(32),
+            build: (pw.Context context) {
+              return pw.Center(
+                child: pw.FittedBox(
+                  fit: pw.BoxFit.contain,
+                  child: pw.Column(
+                    mainAxisSize: pw.MainAxisSize.min,
+                    children: [
+                      buildPdfImage(titleImage, 'Title'),
+                      buildPdfImage(headerImageBytes, 'Header'),
+                      for (int i = 0; i < pageRowImages.length; i++)
+                        buildPdfImage(pageRowImages[i], 'Row $i'),
+                      if (isLastPage || entries.isEmpty)
+                        buildPdfImage(footerImage, 'Footer'),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      }
+    } else {
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.all(32),
+          build: (pw.Context context) {
+            return pw.Center(
+              child: pw.FittedBox(
+                fit: pw.BoxFit.contain,
+                child: pw.Column(
+                  mainAxisSize: pw.MainAxisSize.min,
+                  children: [
+                    buildPdfImage(titleImage, 'Title'),
+                    buildPdfImage(headerImageBytes, 'Header'),
+                    for (int i = 0; i < capturedRowImages.length; i++)
+                      buildPdfImage(capturedRowImages[i], 'Row $i'),
+                    if (pageIndex == totalPages - 1 || entries.isEmpty)
+                      buildPdfImage(footerImage, 'Footer'),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
-      ),
-    );
+            );
+          },
+        ),
+      );
+    }
 
     return pdf.save();
   }

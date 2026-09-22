@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../providers/manpower_provider.dart';
 import '../models/manpower_model.dart';
 import '../providers/auth_provider.dart';
+import '../config/app_config.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -231,7 +232,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                'Designed and created by Sreenath KK, FRS Meenchanda.',
+                                'Designed and created by Sreenath KK, FRS Station.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.tealAccent.withOpacity(0.8),

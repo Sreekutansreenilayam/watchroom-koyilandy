@@ -7,6 +7,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/incident_model.dart';
 import '../providers/incident_provider.dart';
+import '../config/app_config.dart';
 
 class IncidentReportScreen extends StatefulWidget {
   const IncidentReportScreen({super.key});
@@ -20,7 +21,7 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
   String? _selectedType;
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _linkController = TextEditingController();
-  LatLng _selectedLocation = const LatLng(11.2189, 75.7925); // Meenchanda default
+  LatLng _selectedLocation = AppConfig.stationLocation;
   final MapController _mapController = MapController();
   Timer? _debounce;
   List<Map<String, dynamic>> _addressSuggestions = [];

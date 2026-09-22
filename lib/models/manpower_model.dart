@@ -1,3 +1,4 @@
+import '../config/app_config.dart';
 class Manpower {
   final String id;
   final String idNumber;
@@ -24,7 +25,7 @@ class Manpower {
     this.stationIn,
     this.stationOut,
     required this.isDriver,
-    this.currentStation = 'FRS Meenchanda',
+    this.currentStation = '',
     this.isTempAttachedForTraining = false,
     this.gender = 'Male',
     this.sortOrder = 999,
@@ -43,7 +44,7 @@ class Manpower {
       return base;
     }
     
-    if (currentStation.trim().isNotEmpty && currentStation.trim().toLowerCase() != 'frs meenchanda') {
+    if (currentStation.trim().isNotEmpty && currentStation.trim().toLowerCase() != AppConfig.stationNameShort.toLowerCase()) {
        return '$base - $currentStation';
     }
     return base;
@@ -79,7 +80,7 @@ class Manpower {
       stationIn: map['stationIn'] != null ? DateTime.parse(map['stationIn']) : DateTime(2026, 6, 1),
       stationOut: map['stationOut'] != null ? DateTime.parse(map['stationOut']) : null,
       isDriver: map['isDriver'] ?? false,
-      currentStation: map['currentStation'] ?? 'FRS Meenchanda',
+      currentStation: map['currentStation'] ?? '',
       isTempAttachedForTraining: map['isTempAttachedForTraining'] ?? false,
       gender: map['gender'] ?? 'Male',
       sortOrder: map['sortOrder'] ?? 999,

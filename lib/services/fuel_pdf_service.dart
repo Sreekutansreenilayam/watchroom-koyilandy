@@ -5,6 +5,7 @@ import '../models/fuel_model.dart';
 import 'package:intl/intl.dart';
 
 import 'dart:typed_data';
+import '../config/app_config.dart';
 
 class FuelPdfService {
   static Future<Uint8List> generateStockRegister(FuelLedger ledger, List<FuelTransaction> transactions) async {
@@ -52,7 +53,7 @@ class FuelPdfService {
       children: [
         pw.Center(
           child: pw.Text(
-            'STOCK REGISTER OF FIRE & RESCUE STATION, MEENCHANDA',
+            'STOCK REGISTER OF ${AppConfig.stationName.toUpperCase()}',
             style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline),
           ),
         ),

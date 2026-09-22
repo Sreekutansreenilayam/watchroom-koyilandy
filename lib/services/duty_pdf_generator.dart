@@ -7,6 +7,7 @@ import '../models/duty_register_model.dart';
 import '../models/attendance_model.dart';
 import '../models/manpower_model.dart';
 import 'text_to_image_service.dart';
+import '../config/app_config.dart';
 
 class PdfPreRenderedTexts {
   final pw.MemoryImage dutyReg;
@@ -151,7 +152,10 @@ class DutyPdfGenerator {
           continue;
         }
 
-        if (person.currentStation != 'FRS Meenchanda') {
+        bool isHomeStation = person.currentStation.trim().isEmpty || 
+                             person.currentStation.trim().toLowerCase() == AppConfig.stationNameShort.toLowerCase();
+
+        if (!isHomeStation) {
           final station = person.currentStation;
           otherStationsOffDutyIds.putIfAbsent(station, () => []);
           otherStationsOffDutyDrIds.putIfAbsent(station, () => []);
@@ -884,7 +888,7 @@ class DutyPdfGenerator {
           pw.Container(
             padding: const pw.EdgeInsets.all(3),
             child: pw.Text(
-              'PERFORMA DUTY DETAILING OF PERSONNEL - FIRE & RESCUE STATION MEENCHANDA',
+              'PERFORMA DUTY DETAILING OF PERSONNEL - ${AppConfig.stationNamePdfHeader}',
               style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
               textAlign: pw.TextAlign.center,
             ),

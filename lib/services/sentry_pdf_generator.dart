@@ -4,6 +4,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
 import '../models/sentry_register_model.dart';
 import '../models/manpower_model.dart';
+import '../config/app_config.dart';
 
 class SentryPdfGenerator {
   static Future<Uint8List> generatePdf({
@@ -25,7 +26,7 @@ class SentryPdfGenerator {
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
               pw.Text(
-                'FIRE & RESCUE STATION MEENCHANDA',
+                AppConfig.stationNamePdfHeader,
                 style: pw.TextStyle(
                   fontSize: 18,
                   fontWeight: pw.FontWeight.bold,

@@ -199,7 +199,7 @@ class AccessControl {
     try {
       final person = manpowerList.firstWhere((p) => p.id == linkedPersonId);
       final desig = person.designation.toUpperCase();
-      return person.isDriver || desig == 'FRO (D)' || desig == 'SFRO (M)'; // Ensuring explicit drivers are covered
+      return person.isDriver || desig == 'FRO (D)' || desig.replaceAll(' ', '') == 'SFRO(M)'; // Ensuring explicit drivers are covered
     } catch (e) {
       return false;
     }
@@ -212,7 +212,7 @@ class AccessControl {
     final manpowerList = context.read<ManpowerProvider>().personnelList;
     try {
       final person = manpowerList.firstWhere((p) => p.id == linkedPersonId);
-      return person.designation.toUpperCase() == 'SFRO (M)';
+      return person.designation.toUpperCase().replaceAll(' ', '') == 'SFRO(M)';
     } catch (e) {
       return false;
     }
@@ -317,12 +317,11 @@ class AccessControl {
           register.date.day == targetDate.day) {
         
         for (var assignment in register.vehicleAssignments) {
-          if (assignment.froD.trim() == linkedPersonId || assignment.froD.trim() == idNumber) {
+          if (assignment.froD.contains(linkedPersonId) || assignment.froD.contains(idNumber)) {
             assignedVehicles.add(assignment.vehicleName);
             continue;
           }
-          final khgList = assignment.khg.split(',').map((e) => e.trim()).toList();
-          if (khgList.contains(linkedPersonId) || khgList.contains(idNumber)) {
+          if (assignment.khg.contains(linkedPersonId) || assignment.khg.contains(idNumber)) {
             assignedVehicles.add(assignment.vehicleName);
           }
         }

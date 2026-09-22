@@ -7,6 +7,7 @@ import '../providers/vehicle_provider.dart';
 import '../providers/manpower_provider.dart';
 import '../models/voucher_model.dart';
 import '../models/manpower_model.dart';
+import '../config/app_config.dart';
 
 class VoucherFormScreen extends StatefulWidget {
   final VoucherModel? voucher;
@@ -56,7 +57,7 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
     _issuedByIdNo = v?.issuedByIdNo ?? '';
     _issuedByDesig = v?.issuedByDesignation ?? '';
     _issuedByNameCtrl = TextEditingController(text: v?.issuedByName ?? '');
-    _issuedByStation = v?.issuedByStation ?? 'Fire & Rescue Station, Meenchanda';
+    _issuedByStation = v?.issuedByStation ?? AppConfig.stationName;
     _issuedByMobile = v?.issuedByMobile ?? '';
 
     _receivedByIdCtrl = TextEditingController(text: v?.receivedByIdNo ?? '');
@@ -96,7 +97,7 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
 
       String finalIvNo = widget.voucher?.ivNo ?? '';
       DateTime? finalIssueDate = widget.voucher?.issueDate ?? DateTime.now();
-      String finalIssueStation = widget.voucher?.issueStation ?? 'Fire & Rescue Station, Meenchanda';
+      String finalIssueStation = widget.voucher?.issueStation ?? AppConfig.stationName;
 
       // Auto-detect category based on selected items
       String detectedCategory = 'Misc';
@@ -354,7 +355,7 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
                         setState(() {
                           _issuedByIdNo = person.idNumber;
                           _issuedByDesig = person.designation;
-                          _issuedByStation = person.currentStation.isNotEmpty ? person.currentStation : 'Fire & Rescue Station, Meenchanda';
+                          _issuedByStation = person.currentStation.isNotEmpty ? person.currentStation : AppConfig.stationName;
                           _issuedByMobile = person.mobileNumber;
                         });
                       },

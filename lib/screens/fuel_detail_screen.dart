@@ -91,18 +91,20 @@ class FuelDetailScreen extends StatelessWidget {
           );
         },
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFFB300),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          onPressed: () => FuelDialogs.showAddEntryDialog(context, ledger),
-          child: const Text(
-            '+ ADD ENTRY',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFB300),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => FuelDialogs.showAddEntryDialog(context, ledger),
+            child: const Text(
+              '+ ADD ENTRY',
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
           ),
         ),
       ),
@@ -179,7 +181,7 @@ class FuelDetailScreen extends StatelessWidget {
           Expanded(
             flex: 1,
             child: Text(
-              '${isReceipt ? '+' : '-'}${tx.quantity} L',
+              '${isReceipt ? '+' : '-'}${tx.quantity.toStringAsFixed(3)} L',
               textAlign: TextAlign.right,
               style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
@@ -187,7 +189,7 @@ class FuelDetailScreen extends StatelessWidget {
           Expanded(
             flex: 1,
             child: Text(
-              '${tx.balanceAfter} L',
+              '${tx.balanceAfter.toStringAsFixed(3)} L',
               textAlign: TextAlign.right,
               style: const TextStyle(color: Color(0xFFFFB300), fontSize: 12, fontWeight: FontWeight.bold),
             ),

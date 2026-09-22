@@ -394,15 +394,19 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
       bool present = AccessControl.isPresentOnDuty(context, checkDate);
       if (!present) return false;
 
-      String? assignedId = AccessControl.getAssignedVehicleId(context, checkDate);
-      if (assignedId == null) return false;
+      final assignedVehicles = AccessControl.getAssignedVehicles(context, checkDate);
+      if (assignedVehicles.isEmpty) return false;
 
       final cleanReg = widget.vehicle.regNumber.replaceAll('-', '').replaceAll(' ', '').toLowerCase();
       final cleanType = widget.vehicle.type.replaceAll('-', '').replaceAll(' ', '').toLowerCase();
-      final nameLower = assignedId.replaceAll('-', '').replaceAll(' ', '').toLowerCase();
+      
+      bool isAssigned = assignedVehicles.any((assignedId) {
+        final nameLower = assignedId.replaceAll('-', '').replaceAll(' ', '').toLowerCase();
+        return (cleanReg.isNotEmpty && nameLower.contains(cleanReg)) ||
+               (cleanType.isNotEmpty && nameLower.contains(cleanType));
+      });
 
-      if (!((cleanReg.isNotEmpty && nameLower.contains(cleanReg)) ||
-            (cleanType.isNotEmpty && nameLower.contains(cleanType)))) {
+      if (!isAssigned) {
         return false;
       }
       checkDate = checkDate.add(const Duration(days: 1));
@@ -603,14 +607,16 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
         }
       }
 
-      final assignedId = AccessControl.getAssignedVehicleId(context, _date);
+      final assignedVehicles = AccessControl.getAssignedVehicles(context, _date);
       bool isAssignedDriver = false;
-      if (assignedId != null) {
-        final nameLower = assignedId.replaceAll('-', '').replaceAll(' ', '').toLowerCase();
+      if (assignedVehicles.isNotEmpty) {
         final cleanReg = widget.vehicle.regNumber.replaceAll('-', '').replaceAll(' ', '').toLowerCase();
         final cleanType = widget.vehicle.type.replaceAll('-', '').replaceAll(' ', '').toLowerCase();
-        isAssignedDriver = (cleanReg.isNotEmpty && nameLower.contains(cleanReg)) ||
-                           (cleanType.isNotEmpty && nameLower.contains(cleanType));
+        isAssignedDriver = assignedVehicles.any((assignedId) {
+          final nameLower = assignedId.replaceAll('-', '').replaceAll(' ', '').toLowerCase();
+          return (cleanReg.isNotEmpty && nameLower.contains(cleanReg)) ||
+                 (cleanType.isNotEmpty && nameLower.contains(cleanType));
+        });
       }
       final isSfroM = AccessControl.isSfroM(context);
       final isAdmin = AccessControl.isAdmin(context);

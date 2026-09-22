@@ -232,7 +232,7 @@ class FuelDialogs {
     final quantityController = TextEditingController();
     final remarksController = TextEditingController();
     String? selectedType; // Blank by default
-    DateTime selectedDate = AccessControl.getDutyDate(DateTime.now());
+    DateTime? selectedDate;
 
     final isAdminOrSfroM = AccessControl.isAdmin(context) || AccessControl.isSfroM(context);
     final activeDates = AccessControl.getActiveDutyDates();
@@ -270,9 +270,7 @@ class FuelDialogs {
       loggedInPersonFormatted = '${loggedInPerson.name} (${loggedInPerson.designation} - $suffix)';
     }
 
-    if (!isAdminOrSfroM) {
-      operatorController.text = loggedInPersonFormatted;
-    }
+    operatorController.text = loggedInPersonFormatted;
 
     showDialog(
       context: context,
@@ -291,14 +289,14 @@ class FuelDialogs {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Date', style: TextStyle(color: Colors.white70, fontSize: 12)),
                     subtitle: Text(
-                      '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}',
+                      selectedDate == null ? 'Select Date' : '${selectedDate!.day.toString().padLeft(2, '0')}/${selectedDate!.month.toString().padLeft(2, '0')}/${selectedDate!.year}',
                       style: const TextStyle(color: Colors.white, fontSize: 16),
                     ),
                     trailing: const Icon(Icons.calendar_today, color: Colors.white54),
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: selectedDate,
+                        initialDate: selectedDate ?? AccessControl.getDutyDate(DateTime.now()),
                         firstDate: DateTime(2000),
                         lastDate: DateTime(2100),
                         selectableDayPredicate: (DateTime day) {
@@ -484,12 +482,16 @@ class FuelDialogs {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFB300)),
               onPressed: () async {
+                if (selectedDate == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a date')));
+                  return;
+                }
                 if (formKey.currentState!.validate()) {
                   final provider = Provider.of<FuelProvider>(context, listen: false);
                   // Ensure previous errors are cleared, although addTransaction overwrites it anyway
                   await provider.addTransaction(
                     ledgerId: ledger.id,
-                    date: selectedDate,
+                    date: selectedDate!,
                     party: partyController.text.trim(),
                     type: selectedType!,
                     quantity: double.parse(quantityController.text.trim()),

@@ -17,8 +17,10 @@ class FuelScreen extends StatelessWidget {
         appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: const Color(0xFF1E1E1E),
-          title: const Text('FUEL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('FUEL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        iconTheme: const IconThemeData(color: Colors.white),
+          actions: [
+          ],
           bottom: const TabBar(
             indicatorColor: Color(0xFFFFB300), // Yellow indicator
             labelColor: Color(0xFFFFB300),
@@ -46,18 +48,20 @@ class FuelScreen extends StatelessWidget {
             );
           },
         ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFB300),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () => FuelDialogs.showAddLedgerDialog(context),
-            child: const Text(
-              '+ ADD LEDGER HEAD',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFB300),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () => FuelDialogs.showAddLedgerDialog(context),
+              child: const Text(
+                '+ ADD LEDGER HEAD',
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
             ),
           ),
         ),
@@ -100,7 +104,7 @@ class FuelScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '${ledger.currentBalance} L',
+                    '${ledger.currentBalance.toStringAsFixed(3)} L',
                     style: const TextStyle(color: Color(0xFFFFB300), fontWeight: FontWeight.bold),
                   ),
                 ),

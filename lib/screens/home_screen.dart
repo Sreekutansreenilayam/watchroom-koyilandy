@@ -19,6 +19,7 @@ import '../widgets/pulse_marker.dart';
 import '../models/incident_model.dart';
 import '../models/duty_register_model.dart';
 import '../services/access_control.dart';
+import '../config/app_config.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,8 +29,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Station Location - Meenchanda (approx)
-  final LatLng _stationLocation = const LatLng(11.2189, 75.7925);
+  // Station Location
+  final LatLng _stationLocation = AppConfig.stationLocation;
   final MapController _mapController = MapController();
 
   @override
@@ -579,9 +580,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        'Meenchanda',
-                        style: TextStyle(
+                      Text(
+                        AppConfig.stationCity,
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,

@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../models/attendance_model.dart';
 import '../models/manpower_model.dart';
+import '../config/app_config.dart';
 
 class ParadestatePdfGenerator {
   static Future<Uint8List> generateParadestatePdf({
@@ -103,7 +104,7 @@ class ParadestatePdfGenerator {
       if (!stats.containsKey(effRank)) continue;
 
       // Handle Remarks for special duties from other stations
-      bool isSpecialDuty = p.currentStation.trim().isNotEmpty && p.currentStation.trim().toLowerCase() != 'frs meenchanda';
+      bool isSpecialDuty = p.currentStation.trim().isNotEmpty && p.currentStation.trim().toLowerCase() != AppConfig.stationNameShort.toLowerCase();
       
       // Explicitly check for Manuprasad as requested by user
       if (p.name.toLowerCase().contains('manuprasad') || p.name.toLowerCase().contains('manu prasad')) {
@@ -112,7 +113,7 @@ class ParadestatePdfGenerator {
 
       if (isSpecialDuty) {
         String stn = p.currentStation.trim();
-        if (stn.isEmpty || stn.toLowerCase() == 'frs meenchanda') {
+        if (stn.isEmpty || stn.toLowerCase() == AppConfig.stationNameShort.toLowerCase()) {
            stn = 'FARSA'; // Default to FARSA for Manuprasad if not set
         }
         if (stn.toLowerCase() == 'farsa') stn = 'FARSA';
@@ -318,7 +319,7 @@ class ParadestatePdfGenerator {
                 child: pw.FittedBox(
                   fit: pw.BoxFit.scaleDown,
                   child: pw.Text(
-                    'PARADE STATEMENT OF FIRE AND RESCUE STATION, MEENCHANDA ON $dateStr',
+                    'PARADE STATEMENT OF ${AppConfig.stationName.toUpperCase()} ON $dateStr',
                     style: pw.TextStyle(
                       fontSize: 13, 
                       fontWeight: pw.FontWeight.bold, 
@@ -433,7 +434,7 @@ class ParadestatePdfGenerator {
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
                         pw.SizedBox(height: 20),
-                        pw.Text('Submitted to\nStation Officer,\nFire &Rescue Station Meenchanda', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                        pw.Text('Submitted to\nStation Officer,\nFire &Rescue Station Station', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
                         
                         pw.SizedBox(height: 30),
                         pw.Text('Sentry:  ______________________', style: pw.TextStyle(fontSize: 10)),

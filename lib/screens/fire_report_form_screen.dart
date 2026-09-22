@@ -10,6 +10,7 @@ import '../providers/vehicle_provider.dart';
 import '../providers/duty_provider.dart';
 import '../models/manpower_model.dart';
 import '../providers/equipment_provider.dart';
+import '../config/app_config.dart';
 
 class FireReportFormScreen extends StatefulWidget {
   final FireReportModel? existingReport;
@@ -769,7 +770,7 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
   }
 
   void _showAddPersonnelDialog() {
-    final manpowerList = Provider.of<ManpowerProvider>(context, listen: false).getActivePersonnelForDate(_date).where((p) => p.currentStation.trim().toLowerCase() == 'frs meenchanda' || p.currentStation.isEmpty).toList();
+    final manpowerList = Provider.of<ManpowerProvider>(context, listen: false).getActivePersonnelForDate(_date).where((p) => p.currentStation.trim().toLowerCase() == AppConfig.stationNameShort.toLowerCase() || p.currentStation.isEmpty).toList();
     List<String> tempSelected = [..._attendingOfficersIds, ..._attendingPersonnelIds];
 
     showDialog(

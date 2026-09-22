@@ -1,4 +1,6 @@
-  import 'package:flutter/material.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -21,14 +23,21 @@ import 'providers/contact_provider.dart';
 import 'providers/voucher_provider.dart';
 import 'providers/logbook_provider.dart';
 import 'widgets/version_check_wrapper.dart';
+import 'config/app_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppConfig.init();
   
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    if (kIsWeb || !Platform.isAndroid) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } else {
+      // For Android, use the native google-services.json injected by Gradle flavors
+      await Firebase.initializeApp();
+    }
   } catch (e) {
     debugPrint("Firebase init error: $e");
   }

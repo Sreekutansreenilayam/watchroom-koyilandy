@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/manpower_model.dart';
+import '../config/app_config.dart';
 
 class ManpowerProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -104,8 +105,8 @@ class ManpowerProvider with ChangeNotifier {
         bool isTrainee = a.designation.toLowerCase() == 'trainees' && b.designation.toLowerCase() == 'trainees';
 
         if (!isTrainee) {
-          bool aIsHome = a.currentStation.trim().toLowerCase() == 'frs meenchanda' || a.currentStation.isEmpty;
-          bool bIsHome = b.currentStation.trim().toLowerCase() == 'frs meenchanda' || b.currentStation.isEmpty;
+          bool aIsHome = a.currentStation.trim().toLowerCase() == AppConfig.stationNameShort.toLowerCase() || a.currentStation.isEmpty;
+          bool bIsHome = b.currentStation.trim().toLowerCase() == AppConfig.stationNameShort.toLowerCase() || b.currentStation.isEmpty;
           
           if (aIsHome && !bIsHome) return -1;
           if (!aIsHome && bIsHome) return 1;

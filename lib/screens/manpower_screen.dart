@@ -8,6 +8,7 @@ import '../providers/manpower_provider.dart';
 import '../providers/attendance_provider.dart';
 import '../services/access_control.dart';
 import 'attendance_screen.dart';
+import '../config/app_config.dart';
 
 class ManpowerScreen extends StatefulWidget {
   const ManpowerScreen({super.key});
@@ -23,7 +24,7 @@ class _ManpowerScreenState extends State<ManpowerScreen> {
   final _idNumberController = TextEditingController();
   final _nameController = TextEditingController();
   final _mobileController = TextEditingController();
-  final _currentStationController = TextEditingController(text: 'FRS Meenchanda');
+  final _currentStationController = TextEditingController(text: AppConfig.stationNameShort);
 
   String? _selectedDesignation;
   String _selectedGender = 'Male';
@@ -34,7 +35,7 @@ class _ManpowerScreenState extends State<ManpowerScreen> {
 
   final List<String> _designations = [
     'STO', 'ASTO',
-    'SFRO', 'SFRO (D)', 'FRO', 'FRO (D)',
+    'SFRO', 'SFRO (M)', 'FRO', 'FRO (D)',
     'KHG', 'Trainees'
   ];
 
@@ -191,7 +192,7 @@ class _ManpowerScreenState extends State<ManpowerScreen> {
       _idNumberController.clear();
       _nameController.clear();
       _mobileController.clear();
-      _currentStationController.text = 'FRS Meenchanda';
+      _currentStationController.text = AppConfig.stationNameShort;
       _selectedDesignation = null;
       _selectedGender = 'Male';
       _stationInDate = null;
@@ -308,7 +309,12 @@ class _ManpowerScreenState extends State<ManpowerScreen> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: 24 + MediaQuery.of(context).padding.bottom,
+            ),
             decoration: BoxDecoration(
               color: const Color(0xFF1E1E1E).withOpacity(0.85),
               border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
@@ -528,11 +534,18 @@ class _ManpowerScreenState extends State<ManpowerScreen> {
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             if (_stationInDate == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Station In date is mandatory (Station In തീയതി നിർബന്ധമാണ്).', style: TextStyle(color: Colors.white)),
-                                  backgroundColor: Colors.redAccent,
-                                  duration: Duration(seconds: 4),
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  backgroundColor: const Color(0xFF1E1E1E),
+                                  title: const Text('Error', style: TextStyle(color: Colors.redAccent)),
+                                  content: const Text('Station In date is mandatory (Station In തീയതി നിർബന്ധമാണ്).', style: TextStyle(color: Colors.white)),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('OK', style: TextStyle(color: Colors.blueAccent)),
+                                    ),
+                                  ],
                                 ),
                               );
                               return;
@@ -557,16 +570,23 @@ class _ManpowerScreenState extends State<ManpowerScreen> {
                             }
 
                             if (isDuplicate) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  backgroundColor: const Color(0xFF1E1E1E),
+                                  title: const Text('Error', style: TextStyle(color: Colors.redAccent)),
                                   content: Text(
                                     inPastList
                                       ? 'This ID Number already exists in the Past Personnel list (ഈ ഐഡി നമ്പർ Past Personnel ലിസ്റ്റിൽ നിലവിലുണ്ട്)'
                                       : 'This ID Number already exists (ഈ ഐഡി നമ്പർ ഇതിനകം നിലവിലുണ്ട്)',
                                     style: const TextStyle(color: Colors.white),
                                   ),
-                                  backgroundColor: Colors.redAccent,
-                                  duration: const Duration(seconds: 4),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('OK', style: TextStyle(color: Colors.blueAccent)),
+                                    ),
+                                  ],
                                 ),
                               );
                               return; // Stop saving
