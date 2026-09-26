@@ -4,6 +4,7 @@ class VehicleModel {
   final String id;
   final String regNumber; // e.g. KL01CS2707
   final String type; // e.g. AMBULANCE
+  final String shortName; // e.g. F/T, W/B
   final String status; // READY, OFF ROAD, etc.
   final double waterLevel; // 0.0 to 1.0 (used in interactive hub)
   final double fuelLevel; // 0.0 to 1.0 (used in interactive hub)
@@ -65,6 +66,7 @@ class VehicleModel {
     required this.id,
     required this.regNumber,
     required this.type,
+    this.shortName = '',
     required this.status,
     required this.waterLevel,
     required this.fuelLevel,
@@ -109,6 +111,7 @@ class VehicleModel {
     return {
       'regNumber': regNumber,
       'type': type,
+      'shortName': shortName,
       'status': status,
       'waterLevel': waterLevel,
       'fuelLevel': fuelLevel,
@@ -168,6 +171,7 @@ class VehicleModel {
       id: documentId,
       regNumber: map['regNumber'] ?? '',
       type: map['type'] ?? '',
+      shortName: map['shortName'] ?? '',
       status: map['status'] ?? 'Available',
       waterLevel: parseDouble(map['waterLevel']),
       fuelLevel: parseDouble(map['fuelLevel']),

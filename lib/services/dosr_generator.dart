@@ -29,9 +29,11 @@ class DosrGenerator {
     final String dateStr = DateFormat('dd/MM/yy EEEE').format(date);
     final String timeStr = '09:00'; // Fixed as per daily duty starting time
 
+    final String stationNameMal = AppConfig.isKoyilandy ? 'കൊയിലാണ്ടി' : 'മീഞ്ചന്ത';
+
     sb.writeln('Daily Operational Status Report (DOSR)');
     sb.writeln('""""""""""""""""""""""""""""""""""""""');
-    sb.writeln('Fire & Rescue Station🚒  :  മീഞ്ചന്ത ');
+    sb.writeln('Fire & Rescue Station🚒  :  $stationNameMal ');
     sb.writeln('Date.                 : $dateStr ');
     sb.writeln('Time.                 : $timeStr  Hrs');
     sb.writeln('');
@@ -57,9 +59,6 @@ class DosrGenerator {
     }
 
     String effectiveDesignation(Manpower p) {
-      if (p.designation == 'FRO' && p.gender.toLowerCase() == 'female') {
-        return 'WFRO';
-      }
       return p.designation;
     }
 
@@ -69,7 +68,7 @@ class DosrGenerator {
 
     // 1. Personnel Retiring from Duty (Batch Out)
     sb.writeln('1.  😴 Personnel Retiring from Duty');
-    sb.writeln(' (Batch Out) _ മീഞ്ചന്ത\n');
+    sb.writeln(' (Batch Out)\n');
 
     Map<String, int> retiringStation = {};
     Map<String, int> retiringBeach = {};
@@ -115,18 +114,15 @@ class DosrGenerator {
       }
     }
 
-    writeStats(retiringStation, ['SFRO', 'FRO (D)', 'FRO', 'WFRO', 'KHG']);
+    writeStats(retiringStation, ['SFRO', 'FRO (D)', 'FRO', 'KHG']);
     
-    sb.writeln('\nകോഴിക്കോട് ബീച്ച്');
-    sb.writeln('----------------------------');
-    writeStats(retiringBeach, ['FRO (D)', 'FRO', 'KHG']);
     sb.writeln('                          ');
     sb.writeln('👉   Total Batch Out #  $totalRetiring');
     sb.writeln('\n"""""""""""""""""""""""""""""');
 
     // 2. Officer on Duty & 3. Personnel on Duty
     sb.writeln('2. 🧑🚒 OFFICER ON DUTY ');
-    sb.writeln(' Station Charge  _ മീഞ്ചന്ത\n');
+    sb.writeln(' Station Charge\n');
 
     Map<String, int> onDutyStation = {};
     Map<String, int> onDutyBeach = {};
@@ -169,13 +165,8 @@ class DosrGenerator {
     writeStats(onDutyStation, ['STO', 'ASTO'], skipExtras: true);
     sb.writeln('\n👉           TOTAL # ${totalOfficers.toString().padLeft(2, '0')}');
 
-    sb.writeln('\n3. 🧑🚒 PERSONNAL ON DUTY ');
-    sb.writeln('                (മീഞ്ചന്ത)\n');
-    writeStats(onDutyStation, ['SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO', 'KHG'], skipExtras: true);
-
-    sb.writeln('\n(കോഴിക്കോട് ബീച്ച്)');
-    sb.writeln('----------------------------');
-    writeStats(onDutyBeach, ['FRO (D)', 'KHG'], skipExtras: true);
+    sb.writeln('\n3. 🧑🚒 PERSONNAL ON DUTY \n');
+    writeStats(onDutyStation, ['SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'KHG'], skipExtras: true);
 
     sb.writeln('\n👉 Total Personnel on Duty # $totalPersonnel');
     sb.writeln('\n"""""""""""""""""""""""""""""""""');
@@ -220,7 +211,7 @@ class DosrGenerator {
           clStation[effDesig] = (clStation[effDesig] ?? 0) + 1;
        } else if (['BH', 'HP', 'RH', 'CML', 'EL', 'HPL'].contains(status)) {
           elHpCml++;
-       } else if (status == 'SPCL') {
+       } else if (status == 'SPCL' || status == 'PL') {
           spcl++;
        } else if (status == 'SD' || status == 'WA') {
           if (effDesig == 'KHG') {
@@ -253,23 +244,18 @@ class DosrGenerator {
       return total;
     }
 
-    int totalDayOffStation = getSectionTotal(dayOffStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
+    int totalDayOffStation = getSectionTotal(dayOffStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO']);
     int totalDayOffBeach = getSectionTotal(dayOffBeach, ['FRO (D)']);
-    int totalCl = getSectionTotal(clStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
+    int totalCl = getSectionTotal(clStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO']);
 
-    sb.writeln('DAY OFF (മീഞ്ചന്ത)');
+    sb.writeln('DAY OFF');
     sb.writeln('---------------------');
-    writeStats(dayOffStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
+    writeStats(dayOffStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO']);
     sb.writeln('\n👉    TOTAL #.       ${totalDayOffStation.toString().padLeft(2, '0')}');
-
-    sb.writeln('\nDAY OFF (കോഴിക്കോട് ബീച്ച് )');
-    sb.writeln('--------------------------------         ');
-    writeStats(dayOffBeach, ['FRO (D)']);
-    sb.writeln('\n👉    TOTAL #.       ${totalDayOffBeach.toString().padLeft(2, '0')}');
 
     sb.writeln('\nCASUAL LEAVE (CL) ');
     sb.writeln('-------------------------------                      ');
-    writeStats(clStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO', 'WFRO']);
+    writeStats(clStation, ['STO', 'ASTO', 'SFRO', 'SFRO (M)', 'FRO (D)', 'FRO']);
     sb.writeln('\n👉  TOTAL #.         ${totalCl.toString().padLeft(2, '0')}');
 
     sb.writeln('\n--------------------------------');
@@ -277,7 +263,7 @@ class DosrGenerator {
     sb.writeln('${padDesig('SPL DUTY / W.A')}: ${specialDuty.toString().padLeft(2, '0')}');
     sb.writeln('${padDesig('ML / ABSENT')}: ${medicalLeave.toString().padLeft(2, '0')}');
     sb.writeln('${padDesig('O.D')}: ${od.toString().padLeft(2, '0')}');
-    sb.writeln('${padDesig('SpCL')}: ${spcl.toString().padLeft(2, '0')}');
+    sb.writeln('${padDesig('SpCL/PL')}: ${spcl.toString().padLeft(2, '0')}');
     
     sb.writeln('\nTRAINING :   ');
     sb.writeln('"""""""""""""”"""                               ');
@@ -286,17 +272,11 @@ class DosrGenerator {
     int totalLeavesOthers = elHpCml + specialDuty + medicalLeave + od + spcl + trainingCount;
     sb.writeln('\n👉   TOTAL    #     ${totalLeavesOthers.toString().padLeft(2, '0')}');
 
-    sb.writeln('\nHOME GUARDS (മീഞ്ചന്ത)');
+    sb.writeln('\nHOME GUARDS');
     sb.writeln('-----------------------------------');
     sb.writeln('${padDesig('HG. (LWP)')}: ${lwpStation.toString().padLeft(2, '0')}');
     sb.writeln('${padDesig('HG. (SD/WA)')}: ${sdWaKhgStation.toString().padLeft(2, '0')}');
     sb.writeln('\n👉   TOTAL #.       ${(lwpStation + sdWaKhgStation).toString().padLeft(2, '0')}');
-
-    sb.writeln('\nHOME GUARDS (കോഴിക്കോട് ബീച്ച്)');
-    sb.writeln('------------------------------------');
-    sb.writeln('${padDesig('HG. (LWP)')}: ${lwpBeach.toString().padLeft(2, '0')}');
-    sb.writeln('${padDesig('HG. (SD/WA)')}: ${sdWaKhgBeach.toString().padLeft(2, '0')}');
-    sb.writeln('\n👉   TOTAL   #.     ${(lwpBeach + sdWaKhgBeach).toString().padLeft(2, '0')}');
 
     // Vacancy
     sb.writeln('\n"""""""""""""""""""""""""""""""""""');
@@ -315,23 +295,18 @@ class DosrGenerator {
        
        String desig = effectiveDesignation(p);
        if (isTrainee(p)) {
-          if (p.gender.toLowerCase() == 'female') {
-             desig = 'WFRO';
-          } else {
-             desig = 'FRO';
-          }
+          desig = 'FRO';
        }
        actualStrength[desig] = (actualStrength[desig] ?? 0) + 1;
     }
 
     final Map<String, int> sanctioned = {
-       'STO': 1,
-       'ASTO': 2,
-       'SFRO': 5,
-       'SFRO (M)': 1,
-       'FRO (D)': 10,
-       'FRO': 31,
-       'WFRO': 15,
+      'STO': 1,
+      'ASTO': 1,
+      'SFRO': 3,
+      'SFRO (M)': 1,
+      'FRO (D)': 6,
+      'FRO': 15,
     };
 
     int totalVacancy = 0;

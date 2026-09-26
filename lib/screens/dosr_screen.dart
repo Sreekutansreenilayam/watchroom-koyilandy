@@ -146,6 +146,39 @@ class _DosrScreenState extends State<DosrScreen> {
       final attendanceProvider = context.read<AttendanceProvider>();
       final dutyProvider = context.read<DutyProvider>();
 
+      final todayRegister = dutyProvider.registers.where((r) => r.date.year == _selectedDate.year && r.date.month == _selectedDate.month && r.date.day == _selectedDate.day).firstOrNull;
+      
+      if (todayRegister == null || todayRegister.vehicleAssignments.isEmpty) {
+        bool? shouldContinue = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Warning', style: TextStyle(color: Colors.orangeAccent)),
+            content: const Text(
+              'ഈ ദിവസത്തെ ഡ്യൂട്ടി രജിസ്റ്റർ ജനറേറ്റ് ചെയ്യാത്തതിനാൽ വാഹനങ്ങളുടെ വിവരങ്ങൾ ഈ റിപ്പോർട്ടിൽ ഉൾപ്പെടുത്തിയിട്ടില്ല. വാഹനങ്ങളുടെ വിവരങ്ങൾ ആവശ്യമെങ്കിൽ ആദ്യം ഡ്യൂട്ടി രജിസ്റ്റർ ജനറേറ്റ് ചെയ്യുക. അതല്ലെങ്കിൽ വാഹനങ്ങളുടെ വിവരങ്ങളില്ലാതെ തന്നെ ഈ റിപ്പോർട്ട് ഉപയോഗിക്കാവുന്നതാണ്.',
+              style: TextStyle(height: 1.5, fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+                child: const Text('Continue', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldContinue != true) {
+          setState(() {
+            _isGenerating = false;
+          });
+          return;
+        }
+      }
+
       // Wait a moment for UI to show loading if needed
       await Future.delayed(const Duration(milliseconds: 300));
 

@@ -47,29 +47,28 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAjN1jY13KPcrZMUDFgxDKHHSRFLwrQOC4',
-    appId: '1:264633604676:android:9eb49ea63e5ed7ba8b3a11',
-    messagingSenderId: '264633604676',
-    projectId: 'kerala-fire-mdadatabase',
-    storageBucket: 'kerala-fire-mdadatabase.firebasestorage.app',
+    apiKey: 'AIzaSyA2R2psGFqc-df1ZmN8iDoP3tLYlP8o2xA',
+    appId: '1:146441805327:android:4324806c1f3b243f27cd7a',
+    messagingSenderId: '146441805327',
+    projectId: 'watchroom-koyilandy',
+    storageBucket: 'watchroom-koyilandy.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAuXeIXhN53YtpUSrB6Ltq4zNlC3yLoMQY',
-    appId: '1:264633604676:ios:ea9f216f9bd64a178b3a11',
-    messagingSenderId: '264633604676',
-    projectId: 'kerala-fire-mdadatabase',
-    storageBucket: 'kerala-fire-mdadatabase.firebasestorage.app',
+    apiKey: 'AIzaSyDZJAuqr8ACqfCm8S_BPcUbPgOHuLU_my8',
+    appId: '1:146441805327:ios:14fc47aa57fd828c27cd7a',
+    messagingSenderId: '146441805327',
+    projectId: 'watchroom-koyilandy',
+    storageBucket: 'watchroom-koyilandy.firebasestorage.app',
     iosBundleId: 'com.keralafiremda.watchroom',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyD6NCpM9qerRVxg7kqfvjBWQxKHlGXdOg8',
-    appId: '1:264633604676:web:04e351f2deec8c3d8b3a11',
-    messagingSenderId: '264633604676',
-    projectId: 'kerala-fire-mdadatabase',
-    authDomain: 'kerala-fire-mdadatabase.firebaseapp.com',
-    storageBucket: 'kerala-fire-mdadatabase.firebasestorage.app',
-    measurementId: 'G-LK56CVY7PP',
+    apiKey: 'AIzaSyDE4jesDfIgQ02WxY4bXW_4IbwF3G95Dcw',
+    appId: '1:146441805327:web:3382c76c7faa55b927cd7a',
+    messagingSenderId: '146441805327',
+    projectId: 'watchroom-koyilandy',
+    authDomain: 'watchroom-koyilandy.firebaseapp.com',
+    storageBucket: 'watchroom-koyilandy.firebasestorage.app',
   );
 }

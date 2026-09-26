@@ -126,6 +126,33 @@ class AccessControl {
     return false;
   }
 
+  static bool canEditAttendance(BuildContext context, String targetPersonId) {
+    if (isAdmin(context)) return true;
+    
+    // Normal case: User is an on-duty SFRO
+    if (isOnDuty(context)) return true;
+
+    // Emergency case: Logged in user is STO/ASTO, target is SFRO
+    final linkedPersonId = context.read<AuthProvider>().linkedPersonId;
+    if (linkedPersonId == null || linkedPersonId.isEmpty) return false;
+
+    final manpowerList = context.read<ManpowerProvider>().personnelList;
+    try {
+      final currentUser = manpowerList.firstWhere((p) => p.id == linkedPersonId);
+      final currentDesig = currentUser.designation.toUpperCase();
+      if (currentDesig == 'STO' || currentDesig == 'ASTO') {
+         final targetUser = manpowerList.firstWhere((p) => p.id == targetPersonId);
+         if (targetUser.designation.toUpperCase() == 'SFRO') {
+            return true;
+         }
+      }
+    } catch (e) {
+      return false;
+    }
+    
+    return false;
+  }
+
   static String getOnDutySfroNames(BuildContext context) {
     final manpowerList = context.read<ManpowerProvider>().personnelList;
     final attendanceProvider = context.read<AttendanceProvider>();

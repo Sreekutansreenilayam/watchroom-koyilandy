@@ -51,25 +51,36 @@ class ForceUpdateScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 48),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE53935), // Secondary Red
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              if (updateUrl.isNotEmpty)
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE53935), // Secondary Red
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                ),
-                icon: const Icon(Icons.download_rounded),
-                label: const Text(
-                  'Update Now',
+                  icon: const Icon(Icons.download_rounded),
+                  label: const Text(
+                    'Update Now',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onPressed: _launchUpdateUrl,
+                )
+              else
+                const Text(
+                  'Please install the latest APK file sent via WhatsApp to continue.',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 18,
+                    color: Color(0xFFE53935),
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                onPressed: _launchUpdateUrl,
-              ),
             ],
           ),
         ),

@@ -23,15 +23,10 @@ class DutyPdfPreviewScreen extends StatelessWidget {
         canChangePageFormat: false,
         canChangeOrientation: false,
         canDebug: false,
-        
-        
-        
-        
-        
         build: (format) => DutyPdfGenerator.generateDutyRegisterPdf(
           register,
           attendanceMap: attProvider.attendanceMap,
-          personnelList: manProvider.personnelList,
+          personnelList: manProvider.getActivePersonnelForDate(register.date),
         ),
       ),
     );

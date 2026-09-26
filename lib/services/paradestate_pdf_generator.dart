@@ -19,13 +19,11 @@ class ParadestatePdfGenerator {
     // Grouping constants
     final ranks = [
       {'key': 'STO', 'name': 'Station Officer', 'sanctioned': 1},
-      {'key': 'ASTO', 'name': 'Asst. Station Officer', 'sanctioned': 2},
-      {'key': 'SFRO', 'name': 'Senior Fire&Rescue Officer', 'sanctioned': 5},
+      {'key': 'ASTO', 'name': 'Asst. Station Officer', 'sanctioned': 1},
+      {'key': 'SFRO', 'name': 'Senior Fire&Rescue Officer', 'sanctioned': 3},
       {'key': 'SFRO (M)', 'name': 'Senior Fire&Rescue Officer(M)', 'sanctioned': 1},
-      {'key': 'FRO (D)', 'name': 'Fire& rescue Officer\n(Driver)', 'sanctioned': 10},
-      {'key': 'FRO', 'name': 'Fireman Fire& rescue\nOfficer', 'sanctioned': 30},
-      {'key': 'WFRO', 'name': 'Fire Women', 'sanctioned': 15},
-      {'key': 'WFRO_TRAINING', 'name': 'Station Training', 'sanctioned': 0},
+      {'key': 'FRO (D)', 'name': 'Fire& rescue Officer\n(Driver)', 'sanctioned': 6},
+      {'key': 'FRO', 'name': 'Fireman Fire& rescue\nOfficer', 'sanctioned': 15},
     ];
 
     Map<String, Map<String, int>> stats = {};
@@ -63,11 +61,10 @@ class ParadestatePdfGenerator {
       if (p.designation == 'KHG') return 'KHG';
       
       if (isTrainee(p)) {
-        if (p.gender.toLowerCase() == 'female') return 'WFRO_TRAINING';
-        return 'FRO'; // Male trainees mapped to FRO for this report
+        return 'FRO'; // All trainees mapped to FRO for this report
       }
 
-      if (p.designation == 'FRO' && p.gender.toLowerCase() == 'female') return 'WFRO';
+      if (p.designation == 'FRO' && p.gender.toLowerCase() == 'female') return 'FRO';
       
       return p.designation; // STO, ASTO, SFRO, SFRO (M), FRO (D), FRO
     }
@@ -174,7 +171,7 @@ class ParadestatePdfGenerator {
       
       int actualRegularPresent = present - attached;
       
-      int vac = key == 'WFRO_TRAINING' ? 0 : sanctioned - actualRegularPresent;
+      int vac = sanctioned - actualRegularPresent;
       stats[key]!['vacancies'] = vac > 0 ? vac : 0;
     }
 
@@ -245,10 +242,8 @@ class ParadestatePdfGenerator {
             var s = stats[key]!;
 
             int sanc = r['sanctioned'] as int;
-            if (key != 'WFRO_TRAINING') {
-              sumSanc += sanc;
-              sumVac += s['vacancies']!;
-            }
+            sumSanc += sanc;
+            sumVac += s['vacancies']!;
 
             sumPres += s['present']!;
             sumOff += s['off']!;
@@ -261,11 +256,15 @@ class ParadestatePdfGenerator {
             sumBh += s['bh_pl']!;
             sumParade += s['parade']!;
 
-            String remarks = i == 4 && remarksList.isNotEmpty ? remarksList.first : '';
-            if (i == 5 && remarksList.length > 1) remarks = remarksList[1];
+            String remarks = '';
+            if (i == 4) {
+              remarks = '1. Spl Duty from FRS KKD - FRO(D)-2525.';
+            } else if (i == 5) {
+              remarks = '1. Spl duty from FRS Nadapuram - FRO-6202.\n2. Spl duty from FRS Vadakara- FRO-8262.\n3. Spl duty @ RFO Office KKD - FRO-7596.\n4. Spl duty @ FARSA - FRO-8632.';
+            }
 
-            String sancStr = key == 'WFRO_TRAINING' ? '' : sanc.toString();
-            String vacStr = key == 'WFRO_TRAINING' ? '' : s['vacancies'].toString();
+            String sancStr = sanc.toString();
+            String vacStr = s['vacancies'].toString();
 
             tableRows.add(pw.TableRow(
               children: [

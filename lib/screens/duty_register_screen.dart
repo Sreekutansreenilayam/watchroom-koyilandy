@@ -11,6 +11,8 @@ import '../providers/manpower_provider.dart';
 import '../providers/attendance_provider.dart';
 import '../providers/sentry_provider.dart';
 import '../models/sentry_register_model.dart';
+import '../providers/vehicle_provider.dart';
+import '../config/app_config.dart';
 
 class ColoredTextEditingController extends TextEditingController {
   List<String> highlightWords;
@@ -80,31 +82,54 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
     final date = targetDate ?? _selectedDate;
     final isNewRule = !date.isBefore(DateTime(2026, 7, 23));
     
-    return [
-      DutyVehicleAssignment(vehicleName: 'F/T KL-01-CS-2796', seniority: isNewRule ? 1 : 2),
-      DutyVehicleAssignment(vehicleName: 'W/B KL-01-CK-2479', seniority: isNewRule ? 2 : 3),
-      DutyVehicleAssignment(vehicleName: 'MTU KL-01-BU-843', seniority: isNewRule ? 3 : 1),
-      DutyVehicleAssignment(vehicleName: 'FRV KL-01-CL-4213', seniority: 4),
-      DutyVehicleAssignment(
-        vehicleName: 'SCUBA VEH. KL-01-CE-1669', 
-        seniority: 5,
-        isAttached: true,
-        remarks: 'FRS, Vellimadukunnu',
-      ),
-      DutyVehicleAssignment(vehicleName: 'AMB KL-01-CS-2707', seniority: 6),
-      DutyVehicleAssignment(vehicleName: 'JEEP KL-01-CS-1207', seniority: 7),
-      DutyVehicleAssignment(vehicleName: 'ICV KL-01-CU-9768', seniority: 8),
-      DutyVehicleAssignment(vehicleName: 'CCV KL-01-CU-5201', seniority: 9),
-      DutyVehicleAssignment(vehicleName: 'BULLET KL-01-BG-3497', seniority: 10),
-      DutyVehicleAssignment(vehicleName: 'TC KL-01-CY-1774', seniority: 11),
-      DutyVehicleAssignment(vehicleName: 'QRV KL-01-BF-8623', seniority: 12),
-      DutyVehicleAssignment(vehicleName: isNewRule ? 'C/S - 1, 7, 8, 13, Aska-III (I-F/T)' : 'C/S - 1, 7, 8, 13, Aska-III (I-MTU)', seniority: 13),
-      DutyVehicleAssignment(vehicleName: isNewRule ? 'C/S - 4, 5, 6, 11, Fanergy, Float Pump, Hydraulic Lukas (II-W/B)' : 'C/S - 4, 5, 6, 11, Fanergy, Float Pump, Hydraulic Lukas (F/T)', seniority: 14),
-      DutyVehicleAssignment(vehicleName: 'C/S-2, 3, 9, 10, 12, Gen EU-65, EXK-2800, OBM, Mini Moon Light (QRV)', seniority: 15),
-      DutyVehicleAssignment(vehicleName: 'Wireless, Interactive Flat Panel Display', seniority: 16),
-      DutyVehicleAssignment(vehicleName: 'Blower, Torch set', seniority: 17),
-      DutyVehicleAssignment(vehicleName: 'BA Set, Gas Detector', seniority: 18),
-    ];
+    List<DutyVehicleAssignment> list = [];
+    final vehicleProvider = context.read<VehicleProvider>();
+    int seniority = 1;
+    for (var v in vehicleProvider.vehicles) {
+      list.add(DutyVehicleAssignment(
+        vehicleName: '${v.type} ${v.regNumber}'.trim(),
+        seniority: seniority++,
+        isOffRoad: v.status != 'READY',
+      ));
+    }
+    
+    if (AppConfig.isKoyilandy) {
+      final kOrder = [
+        'MTU KL01CU9874',
+        'MTU KL01BZ7112',
+        'WATER MIST KL01CC6015',
+        'AMBULANCE KL01CK792',
+        'BULLET KL01BB7142',
+        'MUV KL01DK2865',
+        'MNI MTU KL01BB2997',
+        'JEEP KL01BB3717'
+      ];
+      list.sort((a, b) {
+        int indexA = kOrder.indexWhere((o) => a.vehicleName.contains(o));
+        int indexB = kOrder.indexWhere((o) => b.vehicleName.contains(o));
+        if (indexA == -1) indexA = 999;
+        if (indexB == -1) indexB = 999;
+        return indexA.compareTo(indexB);
+      });
+      for (int i = 0; i < list.length; i++) {
+        list[i] = DutyVehicleAssignment(
+          vehicleName: list[i].vehicleName,
+          seniority: i + 1,
+          isOffRoad: list[i].isOffRoad,
+        );
+      }
+    } else if (AppConfig.isMeenchanda) {
+      list.addAll([
+        DutyVehicleAssignment(vehicleName: isNewRule ? 'C/S - 1, 7, 8, 13, Aska-III (I-F/T)' : 'C/S - 1, 7, 8, 13, Aska-III (I-MTU)', seniority: seniority++),
+        DutyVehicleAssignment(vehicleName: isNewRule ? 'C/S - 4, 5, 6, 11, Fanergy, Float Pump, Hydraulic Lukas (II-W/B)' : 'C/S - 4, 5, 6, 11, Fanergy, Float Pump, Hydraulic Lukas (F/T)', seniority: seniority++),
+        DutyVehicleAssignment(vehicleName: 'C/S-2, 3, 9, 10, 12, Gen EU-65, EXK-2800, OBM, Mini Moon Light (QRV)', seniority: seniority++),
+        DutyVehicleAssignment(vehicleName: 'Wireless, Interactive Flat Panel Display', seniority: seniority++),
+        DutyVehicleAssignment(vehicleName: 'Blower, Torch set', seniority: seniority++),
+        DutyVehicleAssignment(vehicleName: 'BA Set, Gas Detector', seniority: seniority++),
+      ]);
+    }
+    
+    return list;
   }
 
   // We map the editable controllers for vehicles by vehicleName
@@ -554,7 +579,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
 
     bool hasSfro = false;
     for (var p in personnelList) {
-      if (['SFRO', 'SFRO (M)'].contains(p.designation)) {
+      if (['SFRO'].contains(p.designation)) {
         final att = attendanceMap[p.id];
         final status = att?.dailyStatus[day];
         if (status == 'X' || status == null || status.trim().isEmpty || status.toUpperCase() == 'X/R') {
@@ -596,7 +621,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
       if (status == 'X' || status == null || status.trim().isEmpty || status.toUpperCase() == 'X/R') {
         if (category == 'SFRO') {
           if (seniorMostFroAsSfro != null && p.id == seniorMostFroAsSfro.id) return true;
-          return ['SFRO', 'SFRO (M)', 'STO', 'ASTO'].contains(p.designation);
+          return ['SFRO'].contains(p.designation);
         } else if (category == 'FRO') {
           if (seniorMostFroAsSfro != null && p.id == seniorMostFroAsSfro.id) return false;
           return p.designation == 'FRO';
@@ -1101,12 +1126,47 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
   int _getSeniorityRank(String idNumber) {
     final match = RegExp(r'\d+').firstMatch(idNumber);
     if (match != null) {
-      int num = int.parse(match.group(0)!);
+      String digits = match.group(0)!;
+      int num = int.parse(digits);
+      
       if (num < 100) return num + 200000; // 1 or 2-digit numbers are most junior
-      if (num < 1000) return num + 100000; // 3-digit numbers are junior
-      return num;
+      if (num < 1000) return num + 100000; // 3-digit numbers are junior (probation)
+      if (digits.startsWith('10')) return num + 50000; // 4-digit numbers starting with 10 are temporary/junior
+      
+      return num; // Normal 4-digit numbers (like 6015, 7112) are senior
     }
     return 999999;
+  }
+
+  int _getRotatedSeniorityRank(String idNumber) {
+    List<Manpower> active = context.read<ManpowerProvider>().personnelList;
+    if (active.isEmpty) return _getSeniorityRank(idNumber);
+
+    List<Manpower> sorted = List.from(active);
+    sorted.sort((a, b) => _getSeniorityRank(a.idNumber).compareTo(_getSeniorityRank(b.idNumber)));
+    
+    int index = sorted.indexWhere((p) => p.idNumber == idNumber);
+    if (index == -1) return _getSeniorityRank(idNumber); // fallback
+    
+    return (index + _selectedDate.day) % sorted.length;
+  }
+
+  int _getConsecutive(String id) {
+    final manpowerProvider = context.read<ManpowerProvider>();
+    final attendanceProvider = context.read<AttendanceProvider>();
+    final pList = manpowerProvider.personnelList.where((p) => p.idNumber == id).toList();
+    if (pList.isEmpty) return 0;
+    final att = attendanceProvider.attendanceMap[pList.first.id];
+    if (att == null) return 0;
+    int count = 0;
+    int currentDay = _selectedDate.day - 1;
+    while (currentDay > 0) {
+      final status = att.dailyStatus[currentDay];
+      if (status == null || status.trim().isEmpty || status.trim().toUpperCase() == 'X' || status.trim().toUpperCase() == 'X/R') break;
+      count++;
+      currentDay--;
+    }
+    return count;
   }
 
   List<DutyVehicleAssignment> get _assignableVehicles {
@@ -1275,7 +1335,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
     driverStats.sort((a, b) {
       int cmp = (b['absentDays'] as int).compareTo(a['absentDays'] as int);
       if (cmp != 0) return cmp;
-      int rankCmp = (a['shiftedRank'] as int).compareTo(b['shiftedRank'] as int);
+      int rankCmp = _getRotatedSeniorityRank((a['person'] as Manpower).idNumber).compareTo(_getRotatedSeniorityRank((b['person'] as Manpower).idNumber));
       if (rankCmp != 0) return rankCmp;
       return (a['person'] as Manpower).name.compareTo((b['person'] as Manpower).name);
     });
@@ -1575,7 +1635,9 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
     }
 
     driverStats.sort((a, b) {
-      return (a['shiftedRank'] as int).compareTo(b['shiftedRank'] as int);
+      int cmp = (b['absentDays'] as int).compareTo(a['absentDays'] as int); // DESCENDING
+      if (cmp != 0) return cmp;
+      return _getRotatedSeniorityRank((a['person'] as Manpower).idNumber).compareTo(_getRotatedSeniorityRank((b['person'] as Manpower).idNumber));
     });
 
     final allFemaleFroIds = personnelList.where((p) => p.designation == 'FRO' && p.gender == 'Female').map((p) => p.idNumber).toSet();
@@ -1622,7 +1684,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
           int countA = assignments[a['person'].idNumber]?.length ?? 0;
           int countB = assignments[b['person'].idNumber]?.length ?? 0;
           if (countA != countB) return countA.compareTo(countB);
-          return (a['shiftedRank'] as int).compareTo(b['shiftedRank'] as int);
+          return _getRotatedSeniorityRank((a['person'] as Manpower).idNumber).compareTo(_getRotatedSeniorityRank((b['person'] as Manpower).idNumber));
         });
 
         for (var stat in driverStats) {
@@ -1698,7 +1760,9 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
     }
 
     driverStats.sort((a, b) {
-      return (a['shiftedRank'] as int).compareTo(b['shiftedRank'] as int);
+      int cmp = (b['absentDays'] as int).compareTo(a['absentDays'] as int); // DESCENDING
+      if (cmp != 0) return cmp;
+      return _getRotatedSeniorityRank((a['person'] as Manpower).idNumber).compareTo(_getRotatedSeniorityRank((b['person'] as Manpower).idNumber));
     });
 
     final allMaleFroIds = personnelList.where((p) => p.designation == 'FRO' && p.gender == 'Male').map((p) => p.idNumber).toSet();
@@ -1763,7 +1827,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
           int countA = assignments[a['person'].idNumber]?.length ?? 0;
           int countB = assignments[b['person'].idNumber]?.length ?? 0;
           if (countA != countB) return countA.compareTo(countB);
-          return (a['shiftedRank'] as int).compareTo(b['shiftedRank'] as int);
+          return _getRotatedSeniorityRank((a['person'] as Manpower).idNumber).compareTo(_getRotatedSeniorityRank((b['person'] as Manpower).idNumber));
         });
 
         for (var stat in driverStats) {
@@ -1933,6 +1997,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
   void _autoAssignDrivers() {
     final attendanceProvider = context.read<AttendanceProvider>();
     final dutyProvider = context.read<DutyProvider>();
+    final manpowerProvider = context.read<ManpowerProvider>();
 
     final froDList = _getOnDutyPersonnel('FRO(D)').where((p) {
       if (_stationWriterIds.contains(p.idNumber)) return false;
@@ -2001,6 +2066,11 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
     normalDriversStats.sort((a, b) {
       return (a['seniority'] as int).compareTo(b['seniority'] as int);
     });
+
+    if (normalDriversStats.isNotEmpty) {
+      int shift = _selectedDate.day % normalDriversStats.length;
+      normalDriversStats = normalDriversStats.sublist(shift)..addAll(normalDriversStats.sublist(0, shift));
+    }
 
     _froDControllers.forEach((key, controller) {
       if (key != 'CCV KL-01-CU-5201' && key != 'SCUBA VEH. KL-01-CE-1669') controller.text = '';
@@ -2205,6 +2275,11 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
     driverStats.sort((a, b) {
       return (a['person'] as Manpower).name.compareTo((b['person'] as Manpower).name);
     });
+
+    if (driverStats.isNotEmpty) {
+      int shift = _selectedDate.day % driverStats.length;
+      driverStats = driverStats.sublist(shift)..addAll(driverStats.sublist(0, shift));
+    }
 
     int n = driverStats.length;
     String v1 = _getDynamicV(0);
@@ -2518,6 +2593,358 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
     );
   }
 
+
+
+
+  void _autoAssignVehicles() {
+    if (!AppConfig.isKoyilandy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Auto Assign is currently optimized only for Koyilandy.'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    setState(() {
+      for (var v in _vehicles) {
+        _sfroControllers[v.vehicleName]?.clear();
+        _froControllers[v.vehicleName]?.clear();
+        _khgControllers[v.vehicleName]?.clear();
+        _froDControllers[v.vehicleName]?.clear();
+      }
+
+      // Fetch All Available Personnel
+      final allSfro = List<Manpower>.from(_getOnDutyPersonnel('SFRO'));
+      final allFro = List<Manpower>.from(_getOnDutyPersonnel('FRO'));
+      final allKhg = List<Manpower>.from(_getOnDutyPersonnel('KHG'));
+      final allFroD = List<Manpower>.from(_getOnDutyPersonnel('FRO(D)'));
+
+      final dutyProvider = context.read<DutyProvider>();
+      Map<String, int> assignmentsToday = {};
+
+      String pickForDuty(List<Manpower> pool, String dutyTypeOrVehicle) {
+        if (pool.isEmpty) return '';
+        List<Manpower> sortedPool = List.from(pool);
+        sortedPool.sort((a, b) {
+          int assignA = assignmentsToday[a.idNumber] ?? 0;
+          int assignB = assignmentsToday[b.idNumber] ?? 0;
+          if (assignA != assignB) return assignA.compareTo(assignB);
+          
+          int scoreA = 0;
+          int scoreB = 0;
+          var aHist = _getLast3Duties(a.idNumber, _selectedDate, dutyProvider);
+          var bHist = _getLast3Duties(b.idNumber, _selectedDate, dutyProvider);
+          
+          // History penalty
+          bool isOtherDuty = dutyTypeOrVehicle == 'Phone Duty' || dutyTypeOrVehicle == 'Watch Room/Wireless' || dutyTypeOrVehicle == 'Messenger';
+          
+          bool hasDuty(Set<String> d, String target) {
+             if (isOtherDuty) return d.any((x) => x.contains(target));
+             return d.any((x) => x.contains(target)); // They are mixed in history
+          }
+          
+          if (aHist.isNotEmpty && hasDuty(aHist[0], dutyTypeOrVehicle)) scoreA += 10;
+          if (bHist.isNotEmpty && hasDuty(bHist[0], dutyTypeOrVehicle)) scoreB += 10;
+          if (aHist.length > 1 && hasDuty(aHist[1], dutyTypeOrVehicle)) scoreA += 5;
+          if (bHist.length > 1 && hasDuty(bHist[1], dutyTypeOrVehicle)) scoreB += 5;
+          
+          if (scoreA != scoreB) return scoreA.compareTo(scoreB);
+          
+          int freqA = 0;
+          int freqB = 0;
+          for (var reg in dutyProvider.registers) {
+             if (isOtherDuty) {
+                if (dutyTypeOrVehicle == 'Phone Duty' && reg.phoneDutyIds.contains(a.idNumber)) freqA++;
+                if (dutyTypeOrVehicle == 'Watch Room/Wireless' && reg.controlRoomIds.contains(a.idNumber)) freqA++;
+                if (dutyTypeOrVehicle == 'Messenger' && reg.messengerIds.contains(a.idNumber)) freqA++;
+                
+                if (dutyTypeOrVehicle == 'Phone Duty' && reg.phoneDutyIds.contains(b.idNumber)) freqB++;
+                if (dutyTypeOrVehicle == 'Watch Room/Wireless' && reg.controlRoomIds.contains(b.idNumber)) freqB++;
+                if (dutyTypeOrVehicle == 'Messenger' && reg.messengerIds.contains(b.idNumber)) freqB++;
+             } else {
+                for (var v in reg.vehicleAssignments) {
+                    if (v.vehicleName.contains(dutyTypeOrVehicle)) {
+                        if (v.sfro.contains(a.idNumber) || v.fro.contains(a.idNumber) || v.khg.contains(a.idNumber) || v.froD.contains(a.idNumber)) freqA++;
+                        if (v.sfro.contains(b.idNumber) || v.fro.contains(b.idNumber) || v.khg.contains(b.idNumber) || v.froD.contains(b.idNumber)) freqB++;
+                    }
+                }
+             }
+          }
+          if (freqA != freqB) return freqA.compareTo(freqB);
+          
+          int consA = _getConsecutive(a.idNumber);
+          int consB = _getConsecutive(b.idNumber);
+          if (consA != consB) return consB.compareTo(consA); // DESCENDING
+          
+          return _getRotatedSeniorityRank(a.idNumber).compareTo(_getRotatedSeniorityRank(b.idNumber));
+        });
+        
+        final best = sortedPool.first;
+        assignmentsToday[best.idNumber] = (assignmentsToday[best.idNumber] ?? 0) + 1;
+        pool.removeWhere((p) => p.idNumber == best.idNumber);
+        return best.idNumber;
+      }
+
+      _phoneDutyIds.clear();
+      _controlRoomIds.clear();
+      _messengerIds.clear();
+
+      // --- ASSIGN OTHER DUTIES (Phone, Watch Room, Messenger) ---
+      // We assign these first, and remove them from the pools so they don't get vehicles!
+      final sfroPoolForPhone = allSfro.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
+      if (sfroPoolForPhone.isNotEmpty) {
+         String picked = pickForDuty(sfroPoolForPhone, 'Phone Duty');
+         if (picked.isNotEmpty) _phoneDutyIds = [picked];
+      } else {
+         // No SFRO available, detail senior most FRO
+         final froPoolForPhone = allFro.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
+         if (froPoolForPhone.isNotEmpty) {
+             froPoolForPhone.sort((a, b) {
+                 if (a.sortOrder != b.sortOrder) return a.sortOrder.compareTo(b.sortOrder);
+                 return _getSeniorityRank(a.idNumber).compareTo(_getSeniorityRank(b.idNumber));
+             });
+             _phoneDutyIds = [froPoolForPhone.first.idNumber];
+         }
+      }
+
+      final froPoolForWatchRoom = allFro.where((p) => !_sentryDutyIds.contains(p.idNumber) && !_phoneDutyIds.contains(p.idNumber)).toList();
+      if (froPoolForWatchRoom.isNotEmpty) {
+         String picked = pickForDuty(froPoolForWatchRoom, 'Watch Room/Wireless'); // This maps to controlRoom in DB
+         if (picked.isNotEmpty) _controlRoomIds = [picked];
+      }
+
+      final khgPoolForMessenger = allKhg.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
+      if (khgPoolForMessenger.isNotEmpty) {
+         String picked = pickForDuty(khgPoolForMessenger, 'Messenger');
+         if (picked.isNotEmpty) _messengerIds = [picked];
+      }
+
+      // --- AVAILABLE POOLS FOR VEHICLES ---
+      final availableSFRO = allSfro.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList(); // SFRO on Phone Duty can still go on vehicles
+      final availableFRO = allFro.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
+      final availableKHG = allKhg.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
+      final availableFROD = allFroD.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
+
+      // --- FRO(D) ASSIGNMENT ---
+      String driver9874 = pickForDuty(availableFROD, 'MTU KL01CU9874');
+      String driver7112 = pickForDuty(availableFROD, 'MTU KL01BZ7112');
+      
+      String driverMist = pickForDuty(availableFROD, 'WATER MIST');
+      String driverAmb = pickForDuty(availableFROD, 'AMBULANCE');
+      String driverMuv = pickForDuty(availableFROD, 'MUV');
+      String driverBullet = pickForDuty(availableFROD, 'BULLET');
+      
+      String getBalancedDriver(List<String> candidates) {
+         candidates = candidates.where((c) => c.isNotEmpty).toList();
+         if (candidates.isEmpty) return '';
+         candidates.sort((a, b) {
+            int loadA = assignmentsToday[a] ?? 0;
+            int loadB = assignmentsToday[b] ?? 0;
+            return loadA.compareTo(loadB);
+         });
+         String picked = candidates.first;
+         assignmentsToday[picked] = (assignmentsToday[picked] ?? 0) + 1;
+         return picked;
+      }
+      
+      if (driver7112.isEmpty) driver7112 = getBalancedDriver([driver9874]);
+      if (driverMist.isEmpty) driverMist = getBalancedDriver([driver9874]);
+      
+      // Dummies go specifically to 9874 and 7112 as requested
+      String driverJeep = getBalancedDriver([driver9874]); 
+      String driverMniMtu = getBalancedDriver([driver7112]);
+
+      // MUV strictly with 7112
+      if (driverMuv.isEmpty) driverMuv = getBalancedDriver([driver7112]);
+      
+      // Ambulance cannot mix with 7112. So it balances between 9874 and Mist
+      if (driverAmb.isEmpty) driverAmb = getBalancedDriver([driver9874, driverMist]);
+      
+      // Bullet balances across all active drivers to even out the load
+      List<String> allActive = [driver9874, driver7112, driverMist].where((c) => c.isNotEmpty).toSet().toList();
+      if (driverBullet.isEmpty) driverBullet = getBalancedDriver(allActive.isEmpty ? [driver9874] : allActive);
+
+      // --- KHG ASSIGNMENT ---
+      List<String> khg9874 = [];
+      if (availableKHG.isNotEmpty) khg9874.add(pickForDuty(availableKHG, 'MTU KL01CU9874'));
+      List<String> khg7112 = [];
+      if (availableKHG.isNotEmpty) khg7112.add(pickForDuty(availableKHG, 'MTU KL01BZ7112'));
+      
+      List<String> khgMist = [];
+      if (availableKHG.isNotEmpty) khgMist.add(pickForDuty(availableKHG, 'WATER MIST'));
+      List<String> khgMuv = [];
+      if (availableKHG.isNotEmpty) khgMuv.add(pickForDuty(availableKHG, 'MUV'));
+      List<String> khgBullet = []; // Bullet never gets a fresh KHG
+      
+      List<String> khgAmb = [];
+      if (availableKHG.isNotEmpty) khgAmb.add(pickForDuty(availableKHG, 'AMBULANCE'));
+      if (availableKHG.isNotEmpty) khgAmb.add(pickForDuty(availableKHG, 'AMBULANCE'));
+
+      // The 7th KHG goes to Bullet if available
+      if (availableKHG.isNotEmpty) {
+          khgBullet.add(pickForDuty(availableKHG, 'BULLET'));
+      }
+
+      // Distribute any remaining KHGs (8th, 9th, etc.) as surplus
+      while (availableKHG.isNotEmpty) {
+          khg9874.add(pickForDuty(availableKHG, 'MTU KL01CU9874'));
+          if (availableKHG.isNotEmpty) khg7112.add(pickForDuty(availableKHG, 'MTU KL01BZ7112'));
+          if (availableKHG.isNotEmpty) khgMist.add(pickForDuty(availableKHG, 'WATER MIST'));
+          if (availableKHG.isNotEmpty) khgMuv.add(pickForDuty(availableKHG, 'MUV'));
+      }
+
+      String getBalancedDriverList(List<List<String>> candidatesLists) {
+          List<String> candidates = candidatesLists.expand((l) => l).where((c) => c.isNotEmpty).toList();
+          if (candidates.isEmpty) return '';
+          candidates.sort((a, b) {
+            int loadA = assignmentsToday[a] ?? 0;
+            int loadB = assignmentsToday[b] ?? 0;
+            return loadA.compareTo(loadB);
+          });
+          String picked = candidates.first;
+          assignmentsToday[picked] = (assignmentsToday[picked] ?? 0) + 1;
+          return picked;
+      }
+
+      if (khg9874.isEmpty) {
+          if (khgAmb.isNotEmpty) khg9874.add(khgAmb[0]);
+      }
+      if (khg7112.isEmpty) { String p = getBalancedDriverList([khg9874]); if(p.isNotEmpty) khg7112.add(p); }
+      if (khgMist.isEmpty) { String p = getBalancedDriverList([khg9874]); if(p.isNotEmpty) khgMist.add(p); }
+      if (khgBullet.isEmpty) { String p = getBalancedDriverList([khg9874]); if(p.isNotEmpty) khgBullet.add(p); }
+      if (khgMuv.isEmpty) { String p = getBalancedDriverList([khg7112]); if(p.isNotEmpty) khgMuv.add(p); }
+      while (khgAmb.length < 2) {
+          String picked = getBalancedDriverList([khg9874, khgMist, khgBullet]);
+          if (picked.isEmpty) break; // In case all are empty
+          if (!khgAmb.contains(picked)) {
+              khgAmb.add(picked);
+          } else {
+              // If the best picked is already in khgAmb, try to pick another one if possible
+              List<String> remaining = [khg9874, khgMist, khgBullet].expand((l) => l).where((c) => c.isNotEmpty && !khgAmb.contains(c)).toList();
+              if (remaining.isNotEmpty) {
+                  String altPicked = getBalancedDriver(remaining);
+                  if (altPicked.isNotEmpty) khgAmb.add(altPicked);
+                  else break;
+              } else {
+                  break; // No other unique KHG available
+              }
+          }
+      }
+
+      // --- FRO ASSIGNMENT ---
+      List<String> fro9874 = [];
+      List<String> fro7112 = [];
+      List<String> froMist = [];
+      List<String> froMuv = [];
+      List<String> froAmb = [];
+      
+      for (int i = 0; i < 3; i++) { if (availableFRO.isNotEmpty) fro9874.add(pickForDuty(availableFRO, 'MTU KL01CU9874')); }
+      for (int i = 0; i < 3; i++) { if (availableFRO.isNotEmpty) fro7112.add(pickForDuty(availableFRO, 'MTU KL01BZ7112')); }
+      
+      for (int i = 0; i < 3; i++) { if (availableFRO.isNotEmpty) froMist.add(pickForDuty(availableFRO, 'WATER MIST')); }
+      for (int i = 0; i < 3; i++) { if (availableFRO.isNotEmpty) froMuv.add(pickForDuty(availableFRO, 'MUV')); }
+      if (availableFRO.isNotEmpty) froAmb.add(pickForDuty(availableFRO, 'AMBULANCE'));
+
+      void fillFromFallback(List<String> target, int requiredCount, List<String> fallbackPool, {List<String>? avoidPool}) {
+          List<String> available = fallbackPool.where((p) => !target.contains(p) && (avoidPool == null || !avoidPool.contains(p))).toList();
+          
+          // Sort by current load (least assigned first) to balance perfectly
+          available.sort((a, b) {
+              int loadA = assignmentsToday[a] ?? 0;
+              int loadB = assignmentsToday[b] ?? 0;
+              if (loadA != loadB) return loadA.compareTo(loadB);
+              
+              int consA = _getConsecutive(a);
+              int consB = _getConsecutive(b);
+              if (consA != consB) return consB.compareTo(consA); // DESCENDING
+              
+              // If load and consecutive duties are same, sort by rotated seniority to break ties
+              return _getRotatedSeniorityRank(a).compareTo(_getRotatedSeniorityRank(b));
+          });
+          
+          for (var p in available) {
+              if (target.length >= requiredCount) break;
+              target.add(p);
+              assignmentsToday[p] = (assignmentsToday[p] ?? 0) + 1; // Update load!
+          }
+      }
+
+      if (froMist.length < 2) {
+          fillFromFallback(froMist, 1, fro9874);
+          if (froMist.length < 2) fillFromFallback(froMist, 2, fro7112);
+      }
+      fillFromFallback(fro7112, 3, fro9874); // 7112 can borrow from 9874 if shortage
+      fillFromFallback(froMuv, 3, fro7112); // MUV can take everyone from 7112
+      fillFromFallback(froAmb, 1, fro9874, avoidPool: fro7112); // Ambulance strictly from 9874, avoid 7112
+
+      // --- SFRO ASSIGNMENT ---
+      Map<String, String> sfroAssignments = {};
+      if (availableSFRO.length == 1) {
+         String sfroId = availableSFRO.first.idNumber;
+         sfroAssignments['MTU KL01CU9874'] = sfroId;
+         sfroAssignments['MUV KL01DK2865'] = sfroId;
+         sfroAssignments['MTU KL01BZ7112'] = sfroId;
+      } else if (availableSFRO.length > 1) {
+         sfroAssignments['MTU KL01CU9874'] = pickForDuty(availableSFRO, 'MTU KL01CU9874');
+         sfroAssignments['MUV KL01DK2865'] = pickForDuty(availableSFRO, 'MUV KL01DK2865');
+         sfroAssignments['MTU KL01BZ7112'] = pickForDuty(availableSFRO, 'MTU KL01BZ7112');
+         
+         if (availableSFRO.length > 3) {
+             sfroAssignments['MNI MTU KL01BB2997'] = pickForDuty(availableSFRO, 'MNI MTU KL01BB2997');
+             sfroAssignments['WATER MIST KL01CC6015'] = pickForDuty(availableSFRO, 'WATER MIST KL01CC6015');
+         }
+      }
+
+      // Write to controllers
+      String formatIds(List<String> ids) {
+          if (ids.isEmpty) return '';
+          var uniqueIds = ids.where((id) => id.isNotEmpty).toSet().toList();
+          uniqueIds.sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
+          return uniqueIds.join(', ');
+      }
+
+      for (var v in _vehicles) {
+        final vName = v.vehicleName;
+        if (vName.contains('MTU KL01CU9874')) {
+           _froDControllers[vName]?.text = driver9874;
+           _khgControllers[vName]?.text = formatIds(khg9874);
+           _froControllers[vName]?.text = formatIds(fro9874);
+           if (sfroAssignments.containsKey('MTU KL01CU9874')) _sfroControllers[vName]?.text = sfroAssignments['MTU KL01CU9874']!;
+        } else if (vName.contains('MTU KL01BZ7112')) {
+           _froDControllers[vName]?.text = driver7112;
+           _khgControllers[vName]?.text = formatIds(khg7112);
+           _froControllers[vName]?.text = formatIds(fro7112);
+           if (sfroAssignments.containsKey('MTU KL01BZ7112')) _sfroControllers[vName]?.text = sfroAssignments['MTU KL01BZ7112']!;
+        } else if (vName.contains('WATER MIST KL01CC6015')) {
+           _froDControllers[vName]?.text = driverMist;
+           _khgControllers[vName]?.text = formatIds(khgMist);
+           _froControllers[vName]?.text = formatIds(froMist);
+           if (sfroAssignments.containsKey('WATER MIST KL01CC6015')) _sfroControllers[vName]?.text = sfroAssignments['WATER MIST KL01CC6015']!;
+        } else if (vName.contains('AMBULANCE KL01CK792')) {
+           _froDControllers[vName]?.text = driverAmb;
+           _khgControllers[vName]?.text = formatIds(khgAmb);
+           _froControllers[vName]?.text = formatIds(froAmb);
+        } else if (vName.contains('MUV KL01DK2865')) {
+           _froDControllers[vName]?.text = driverMuv;
+           _khgControllers[vName]?.text = formatIds(khgMuv);
+           _froControllers[vName]?.text = formatIds(froMuv);
+           if (sfroAssignments.containsKey('MUV KL01DK2865')) _sfroControllers[vName]?.text = sfroAssignments['MUV KL01DK2865']!;
+        } else if (vName.contains('BULLET KL01BB7142')) {
+           _froDControllers[vName]?.text = driverBullet;
+           _khgControllers[vName]?.text = formatIds(khgBullet);
+        } else if (vName.contains('JEEP KL01BB3717')) {
+           _froDControllers[vName]?.text = driverJeep;
+        } else if (vName.contains('MNI MTU KL01BB2997')) {
+           _froDControllers[vName]?.text = driverMniMtu;
+           if (sfroAssignments.containsKey('MNI MTU KL01BB2997')) _sfroControllers[vName]?.text = sfroAssignments['MNI MTU KL01BB2997']!;
+        }
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vehicles & Duties Auto-assigned.'), backgroundColor: Colors.green),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -2647,36 +3074,43 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    TextButton.icon(
-                      onPressed: _autoAssignSFRO,
-                      icon: const Icon(Icons.star, color: Colors.yellowAccent, size: 16),
-                      label: const Text('Auto SFRO', style: TextStyle(color: Colors.yellowAccent, fontSize: 12)),
-                    ),
-                    TextButton.icon(
-                      onPressed: _autoAssignDrivers,
-                      icon: const Icon(Icons.directions_car, color: Colors.blueAccent, size: 16),
-                      label: const Text('Auto FRO(D)', style: TextStyle(color: Colors.blueAccent, fontSize: 12)),
-                    ),
-                    TextButton.icon(
-                      onPressed: _autoAssignFROMales,
-                      icon: const Icon(Icons.male, color: Colors.lightBlueAccent, size: 16),
-                      label: const Text('Auto FRO (M)', style: TextStyle(color: Colors.lightBlueAccent, fontSize: 12)),
-                    ),
-                    TextButton.icon(
-                      onPressed: _autoAssignFRO,
-                      icon: const Icon(Icons.female, color: Colors.pinkAccent, size: 16),
-                      label: const Text('Auto FRO (F)', style: TextStyle(color: Colors.pinkAccent, fontSize: 12)),
-                    ),
-                    TextButton.icon(
-                      onPressed: _autoAssignKHG,
-                      icon: const Icon(Icons.security, color: Colors.orangeAccent, size: 16),
-                      label: const Text('Auto KHG', style: TextStyle(color: Colors.orangeAccent, fontSize: 12)),
-                    ),
-                    TextButton.icon(
-                      onPressed: _autoAssignAccessories,
-                      icon: const Icon(Icons.build, color: Colors.grey, size: 16),
-                      label: const Text('Auto Accessories', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                    ),
+                    if (!AppConfig.isKoyilandy) ...[
+                      TextButton.icon(
+                        onPressed: _autoAssignSFRO,
+                        icon: const Icon(Icons.star, color: Colors.yellowAccent, size: 16),
+                        label: const Text('Auto SFRO', style: TextStyle(color: Colors.yellowAccent, fontSize: 12)),
+                      ),
+                      TextButton.icon(
+                        onPressed: _autoAssignDrivers,
+                        icon: const Icon(Icons.directions_car, color: Colors.blueAccent, size: 16),
+                        label: const Text('Auto FRO(D)', style: TextStyle(color: Colors.blueAccent, fontSize: 12)),
+                      ),
+                      TextButton.icon(
+                        onPressed: _autoAssignFROMales,
+                        icon: const Icon(Icons.male, color: Colors.lightBlueAccent, size: 16),
+                        label: const Text('Auto FRO (M)', style: TextStyle(color: Colors.lightBlueAccent, fontSize: 12)),
+                      ),
+                      if (context.read<ManpowerProvider>().personnelList.any((p) => p.gender == 'Female' || p.gender == 'F'))
+                        TextButton.icon(
+                          onPressed: _autoAssignFRO,
+                          icon: const Icon(Icons.female, color: Colors.pinkAccent, size: 16),
+                          label: const Text('Auto FRO (F)', style: TextStyle(color: Colors.pinkAccent, fontSize: 12)),
+                        ),
+                      TextButton.icon(
+                        onPressed: _autoAssignKHG,
+                        icon: const Icon(Icons.security, color: Colors.orangeAccent, size: 16),
+                        label: const Text('Auto KHG', style: TextStyle(color: Colors.orangeAccent, fontSize: 12)),
+                      ),
+                      TextButton.icon(
+                        onPressed: _autoAssignAccessories,
+                        icon: const Icon(Icons.build, color: Colors.grey, size: 16),
+                        label: const Text('Auto Accessories', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      ),
+                    ] else ...[
+                      BlinkingAutoAssignButton(
+                        onPressed: _autoAssignVehicles,
+                      ),
+                    ],
                   ],
                 ),
                 ListView.builder(
@@ -2693,7 +3127,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
                   dropdownColor: const Color(0xFF1E1E1E),
                   style: TextStyle(color: isDuplicate ? Colors.redAccent : Colors.white, fontWeight: FontWeight.bold),
                   underline: Container(),
-                  items: List.generate(20, (i) => i + 1).map((int value) {
+                  items: List.generate((_vehicles.length > 30 ? _vehicles.length + 10 : 30), (i) => i + 1).map((int value) {
                     return DropdownMenuItem<int>(
                       value: value,
                       child: Text(_toRoman(value)),
@@ -2848,7 +3282,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildManualSelectionBlock(
-                  'Control Room Personnel',
+                  'Watch Room/Wireless Personnel',
                   _controlRoomIds,
                   (selected) => setState(() => _controlRoomIds = selected),
                   customList: _getOtherDutiesPersonnel(includeSfroM: false),
@@ -2893,6 +3327,75 @@ class _BlinkingWidgetState extends State<BlinkingWidget> with SingleTickerProvid
     return FadeTransition(
       opacity: Tween(begin: 0.3, end: 1.0).animate(_controller),
       child: widget.child,
+    );
+  }
+}
+
+class BlinkingAutoAssignButton extends StatefulWidget {
+  final VoidCallback onPressed;
+  const BlinkingAutoAssignButton({Key? key, required this.onPressed}) : super(key: key);
+
+  @override
+  State<BlinkingAutoAssignButton> createState() => _BlinkingAutoAssignButtonState();
+}
+
+class _BlinkingAutoAssignButtonState extends State<BlinkingAutoAssignButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  bool _hasClicked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _animation = Tween<double>(begin: 0.2, end: 1.0).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+
+    _controller.repeat(reverse: true);
+  }
+
+  void _handlePress() {
+    if (!_hasClicked) {
+      setState(() {
+        _hasClicked = true;
+        _controller.stop();
+        _controller.value = 1.0;
+      });
+    }
+    widget.onPressed();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _animation,
+      child: Container(
+        margin: const EdgeInsets.all(2), // Prevent border clipping
+        child: OutlinedButton.icon(
+          onPressed: _handlePress,
+          icon: const Icon(Icons.auto_awesome, color: Colors.amber, size: 16),
+          label: const Text(
+            'Auto Assign Vehicles',
+            style: TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Colors.amber, width: 1.5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+        ),
+      ),
     );
   }
 }

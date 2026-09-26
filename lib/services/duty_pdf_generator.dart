@@ -64,12 +64,30 @@ class PdfPreRenderedTexts {
 }
 
 class DutyPdfGenerator {
+  static double _dynamicPadding = 2.5;
+  static double _dynamicSummaryHeight = 14.0;
+  static double _fontScale = 1.0;
   static Future<Uint8List> generateDutyRegisterPdf(
     DutyRegisterModel register, {
     Map<String, MonthlyAttendance>? attendanceMap,
     List<Manpower>? personnelList,
   }) async {
     final pdf = pw.Document();
+
+    int vehicleCount = register.vehicleAssignments.length;
+    if (vehicleCount <= 10) {
+      _dynamicPadding = 6.0;
+      _dynamicSummaryHeight = 17.0;
+      _fontScale = 1.3;
+    } else if (vehicleCount <= 14) {
+      _dynamicPadding = 4.0;
+      _dynamicSummaryHeight = 15.0;
+      _fontScale = 1.15;
+    } else {
+      _dynamicPadding = 2.5;
+      _dynamicSummaryHeight = 14.0;
+      _fontScale = 1.0;
+    }
 
     final weekDays = ['തിങ്കളാഴ്ച', 'ചൊവ്വാഴ്ച', 'ബുധനാഴ്ച', 'വ്യാഴാഴ്ച', 'വെള്ളിയാഴ്ച', 'ശനിയാഴ്ച', 'ഞായറാഴ്ച'];
     final dayName = weekDays[register.date.weekday - 1];
@@ -199,7 +217,7 @@ class DutyPdfGenerator {
               weeklyLeaveIds.add(person.idNumber);
             } else if (status == 'CL') {
               casualLeaveIds.add(person.idNumber);
-            } else if (['BH', 'HP', 'RH', 'CML', 'EL', 'HPL', 'SPCL', 'SpCL'].contains(status)) {
+            } else if (['BH', 'HP', 'RH', 'CML', 'EL', 'HPL', 'SPCL', 'SpCL', 'PL'].contains(status)) {
               otherLeaveIds.add(person.idNumber);
             } else if (status == 'ML' || status == 'A') {
               medicalLeaveIds.add(person.idNumber);
@@ -249,9 +267,23 @@ class DutyPdfGenerator {
       }
     }
     
+    int _getSeniorityRank(String idNumber) {
+      final match = RegExp(r'\d+').firstMatch(idNumber);
+      if (match != null) {
+        String digits = match.group(0)!;
+        int num = int.parse(digits);
+        if (num < 100) return num + 200000;
+        if (num < 1000) return num + 100000;
+        if (digits.startsWith('10')) return num + 50000;
+        return num;
+      }
+      return 999999;
+    }
+
     // Helper function to format ID numbers by grouping consecutive identical prefixes
     String formatIdNumbers(List<String> ids) {
       if (ids.isEmpty) return '';
+      ids = List.from(ids)..sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
       List<String> result = [];
       String currentPrefix = '';
       
@@ -381,42 +413,42 @@ class DutyPdfGenerator {
 
     Map<String, pw.MemoryImage> otherStationImages = {};
     for (String station in otherStationsOffDutyIds.keys) {
-      otherStationImages[station] = pw.MemoryImage(await TextToImageService.convertTextToImage(station, fontSize: 32, fontWeight: material.FontWeight.bold));
+      otherStationImages[station] = pw.MemoryImage(await TextToImageService.convertTextToImage(station, fontSize: (32).toDouble(), fontWeight: material.FontWeight.bold));
     }
 
     // Pre-render Malayalam text as high-resolution images
     final texts = PdfPreRenderedTexts(
       dutyReg: pw.MemoryImage(await TextToImageService.convertTextToImage('ഡ്യൂട്ടി രജിസ്റ്റർ (DUTY REGISTER)', fontSize: 40, fontWeight: material.FontWeight.bold)),
       rollCall: pw.MemoryImage(await TextToImageService.convertTextToImage('റോൾകോൾ: ${register.rollCallTime}', fontSize: 36, fontWeight: material.FontWeight.bold)),
-      offDuty: pw.MemoryImage(await TextToImageService.convertTextToImage('വിശ്രമത്തിന് പോകുന്നവർ', fontSize: 26)),
-      onDuty: pw.MemoryImage(await TextToImageService.convertTextToImage('ജോലി ഏൽക്കുന്നവർ', fontSize: 26)),
-      leave: pw.MemoryImage(await TextToImageService.convertTextToImage('ആഴ്ച/ആകസ്മിക അവധി', fontSize: 26)),
-      total: pw.MemoryImage(await TextToImageService.convertTextToImage('ആകെ', fontSize: 26, fontWeight: material.FontWeight.bold)),
-      signature: pw.MemoryImage(await TextToImageService.convertTextToImage('ഒപ്പ് / Signature', fontSize: 32, fontWeight: material.FontWeight.bold)),
-      homeGuards: pw.MemoryImage(await TextToImageService.convertTextToImage('ഹോം ഗാർഡ്സ്', fontSize: 32, fontWeight: material.FontWeight.bold)),
-      leaveOD: pw.MemoryImage(await TextToImageService.convertTextToImage('ശൂന്യവേതന അവധി/LWP', fontSize: 26)),
-      stationTraining: pw.MemoryImage(await TextToImageService.convertTextToImage('നിലയ പരിശീലനം', fontSize: 32, fontWeight: material.FontWeight.bold)),
+      offDuty: pw.MemoryImage(await TextToImageService.convertTextToImage('വിശ്രമത്തിന് പോകുന്നവർ', fontSize: (26).toDouble())),
+      onDuty: pw.MemoryImage(await TextToImageService.convertTextToImage('ജോലി ഏൽക്കുന്നവർ', fontSize: (26).toDouble())),
+      leave: pw.MemoryImage(await TextToImageService.convertTextToImage('ആഴ്ച/ആകസ്മിക അവധി', fontSize: (26).toDouble())),
+      total: pw.MemoryImage(await TextToImageService.convertTextToImage('ആകെ', fontSize: (26).toDouble(), fontWeight: material.FontWeight.bold)),
+      signature: pw.MemoryImage(await TextToImageService.convertTextToImage('ഒപ്പ് / Signature', fontSize: (32).toDouble(), fontWeight: material.FontWeight.bold)),
+      homeGuards: pw.MemoryImage(await TextToImageService.convertTextToImage('ഹോം ഗാർഡ്സ്', fontSize: (32).toDouble(), fontWeight: material.FontWeight.bold)),
+      leaveOD: pw.MemoryImage(await TextToImageService.convertTextToImage('ശൂന്യവേതന അവധി/LWP', fontSize: (26).toDouble())),
+      stationTraining: pw.MemoryImage(await TextToImageService.convertTextToImage('നിലയ പരിശീലനം', fontSize: (32).toDouble(), fontWeight: material.FontWeight.bold)),
       
-      stationWriter: pw.MemoryImage(await TextToImageService.convertTextToImage('നിലയം എഴുത്തുകാരൻ', fontSize: 26)),
-      weeklyLeave: pw.MemoryImage(await TextToImageService.convertTextToImage('ആഴ്ച അവധി', fontSize: 26)),
-      casualLeave: pw.MemoryImage(await TextToImageService.convertTextToImage('ആകസ്മിക അവധി', fontSize: 26)),
-      specialDuty: pw.MemoryImage(await TextToImageService.convertTextToImage('പ്രവർത്തനക്രമീകരണം/സ്പെഷ്യൽ ഡ്യൂട്ടി', fontSize: 26)),
-      medicalLeave: pw.MemoryImage(await TextToImageService.convertTextToImage('മെഡിക്കൽ അവധി/ആബ്സെൻ്റ്', fontSize: 26)),
-      outDuty: pw.MemoryImage(await TextToImageService.convertTextToImage('ഔട്ട് ഡ്യൂട്ടി', fontSize: 26)),
-      training: pw.MemoryImage(await TextToImageService.convertTextToImage('പരിശീലനം', fontSize: 26)),
-      vacancies: pw.MemoryImage(await TextToImageService.convertTextToImage('ഒഴിവുകൾ', fontSize: 26)),
-      subStationHead: pw.MemoryImage(await TextToImageService.convertTextToImage('ഉപനിലയത്തലവൻ', fontSize: 26)),
-      stationHead: pw.MemoryImage(await TextToImageService.convertTextToImage('നിലയത്തലവൻ', fontSize: 26)),
+      stationWriter: pw.MemoryImage(await TextToImageService.convertTextToImage('നിലയം എഴുത്തുകാരൻ', fontSize: (26).toDouble())),
+      weeklyLeave: pw.MemoryImage(await TextToImageService.convertTextToImage('ആഴ്ച അവധി', fontSize: (26).toDouble())),
+      casualLeave: pw.MemoryImage(await TextToImageService.convertTextToImage('ആകസ്മിക അവധി', fontSize: (26).toDouble())),
+      specialDuty: pw.MemoryImage(await TextToImageService.convertTextToImage('പ്രവർത്തനക്രമീകരണം/\nസ്പെഷ്യൽ ഡ്യൂട്ടി', fontSize: (26).toDouble())),
+      medicalLeave: pw.MemoryImage(await TextToImageService.convertTextToImage('മെഡിക്കൽ അവധി/\nആബ്സെൻ്റ്', fontSize: (26).toDouble())),
+      outDuty: pw.MemoryImage(await TextToImageService.convertTextToImage('ഔട്ട് ഡ്യൂട്ടി', fontSize: (26).toDouble())),
+      training: pw.MemoryImage(await TextToImageService.convertTextToImage('പരിശീലനം', fontSize: (26).toDouble())),
+      vacancies: pw.MemoryImage(await TextToImageService.convertTextToImage('ഒഴിവുകൾ', fontSize: (26).toDouble())),
+      subStationHead: pw.MemoryImage(await TextToImageService.convertTextToImage('ഉപനിലയത്തലവൻ', fontSize: (26).toDouble())),
+      stationHead: pw.MemoryImage(await TextToImageService.convertTextToImage('നിലയത്തലവൻ', fontSize: (26).toDouble())),
       
-      headerImage: pw.MemoryImage(await TextToImageService.convertTextToImage('${DateFormat('dd-MM-yyyy').format(register.date)}   $dayName   $rollCallStr', fontSize: 32, fontWeight: material.FontWeight.bold)),
-      offDutyColon: pw.MemoryImage(await TextToImageService.convertTextToImage('വിശ്രമത്തിന് പോകുന്നവർ:', fontSize: 26)),
+      headerImage: pw.MemoryImage(await TextToImageService.convertTextToImage('${DateFormat('dd-MM-yyyy').format(register.date)}   $dayName   $rollCallStr', fontSize: (32).toDouble(), fontWeight: material.FontWeight.bold)),
+      offDutyColon: pw.MemoryImage(await TextToImageService.convertTextToImage('വിശ്രമത്തിന് പോകുന്നവർ:', fontSize: (26).toDouble())),
     );
 
     pdf.addPage(
       pw.Page(
         pageTheme: pw.PageTheme(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.only(left: 45, right: 25, top: 15, bottom: 10),
+          margin: const pw.EdgeInsets.only(left: 75, right: 15, top: 15, bottom: 25),
           buildBackground: (pw.Context context) {
             return pw.FullPage(
               ignoreMargins: true,
@@ -547,7 +579,7 @@ class DutyPdfGenerator {
     required String hgTotal,
   }) {
     return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
       children: [
         // Off Duty Row (Top of the Huge Table)
         pw.Table(
@@ -559,7 +591,7 @@ class DutyPdfGenerator {
             verticalInside: pw.BorderSide(width: 1, color: PdfColors.black),
           ),
           columnWidths: {
-            0: const pw.FlexColumnWidth(3),
+            0: const pw.FlexColumnWidth(4.5),
             1: const pw.FlexColumnWidth(0.8),
             2: const pw.FlexColumnWidth(8),
           },
@@ -572,7 +604,7 @@ class DutyPdfGenerator {
         pw.SizedBox(height: 2),
         pw.Align(
           alignment: pw.Alignment.centerLeft,
-          child: pw.Image(texts.onDuty, height: 9)
+          child: pw.Image(texts.onDuty, height: 12)
         ),
         pw.SizedBox(height: 1),
 
@@ -587,7 +619,7 @@ class DutyPdfGenerator {
             horizontalInside: pw.BorderSide(width: 1, color: PdfColors.black),
           ),
           columnWidths: {
-            0: const pw.FlexColumnWidth(3),
+            0: const pw.FlexColumnWidth(4.5),
             1: const pw.FlexColumnWidth(0.8),
             2: const pw.FlexColumnWidth(8),
           },
@@ -599,9 +631,9 @@ class DutyPdfGenerator {
             _buildSummaryRow(_img(texts.stationWriter), count: stationWriterCount, details: stationWriterDetails),
             _buildSummaryRow(_img(texts.weeklyLeave), count: weeklyLeaveCount, details: weeklyLeaveDetails),
             _buildSummaryRow(_img(texts.casualLeave), count: casualLeaveCount, details: casualLeaveDetails),
-            _buildSummaryRow(_txt('BH/HP/RH/CML/EL/HPL/SpCL'), count: otherLeaveCount, details: otherLeaveDetails),
-            _buildSummaryRow(_img(texts.specialDuty), count: specialDutyCount, details: specialDutyDetails),
-            _buildSummaryRow(_img(texts.medicalLeave), count: medicalLeaveCount, details: medicalLeaveDetails),
+            _buildSummaryRow(_txt('BH/HP/RH/CML/EL/HPL/SpCL/PL'), count: otherLeaveCount, details: otherLeaveDetails),
+            _buildSummaryRow(_img(texts.specialDuty, height: 20), count: specialDutyCount, details: specialDutyDetails),
+            _buildSummaryRow(_img(texts.medicalLeave, height: 20), count: medicalLeaveCount, details: medicalLeaveDetails),
             _buildSummaryRow(_img(texts.outDuty), count: outDutyCount, details: outDutyDetails),
             _buildSummaryRow(_img(texts.training), count: trainingCount, details: trainingDetails),
             _buildSummaryRow(_img(texts.vacancies), count: vacancyCount, details: vacancyDetails),
@@ -616,7 +648,7 @@ class DutyPdfGenerator {
         // Home Guards Section
         pw.Align(
           alignment: pw.Alignment.centerLeft,
-          child: pw.Image(texts.homeGuards, height: 10)
+          child: pw.Image(texts.homeGuards, height: 12)
         ),
         pw.SizedBox(height: 1),
         pw.Table(
@@ -629,14 +661,14 @@ class DutyPdfGenerator {
             horizontalInside: pw.BorderSide(width: 1, color: PdfColors.black),
           ),
           columnWidths: {
-            0: const pw.FlexColumnWidth(3),
+            0: const pw.FlexColumnWidth(4.5),
             1: const pw.FlexColumnWidth(0.8),
             2: const pw.FlexColumnWidth(8),
           },
           children: [
             _buildSummaryRow(_img(texts.offDuty), count: hgOffDutyCount, details: hgOffDutyDetails),
             _buildSummaryRow(_img(texts.onDuty), count: hgOnDutyCount, details: hgOnDutyDetails),
-            _buildSummaryRow(_img(texts.specialDuty), count: hgSpecialDutyCount, details: hgSpecialDutyDetails),
+            _buildSummaryRow(_img(texts.specialDuty, height: 20), count: hgSpecialDutyCount, details: hgSpecialDutyDetails),
             _buildSummaryRow(_img(texts.leaveOD), count: hgLeaveOdCount, details: hgLeaveOdDetails),
             _buildSummaryRow(_img(texts.total), count: hgTotal, isTotal: true),
           ],
@@ -650,7 +682,7 @@ class DutyPdfGenerator {
               pw.SizedBox(height: 3),
               pw.Align(
                 alignment: pw.Alignment.centerLeft,
-                child: pw.Image(texts.stationTraining, height: 10)
+                child: pw.Image(texts.stationTraining, height: 12)
               ),
               pw.SizedBox(height: 1),
               pw.Table(
@@ -663,7 +695,7 @@ class DutyPdfGenerator {
                   horizontalInside: pw.BorderSide(width: 1, color: PdfColors.black),
                 ),
                 columnWidths: {
-                  0: const pw.FlexColumnWidth(3),
+                  0: const pw.FlexColumnWidth(4.5),
                   1: const pw.FlexColumnWidth(0.8),
                   2: const pw.FlexColumnWidth(8),
                 },
@@ -685,7 +717,7 @@ class DutyPdfGenerator {
               pw.SizedBox(height: 3),
               pw.Align(
                 alignment: pw.Alignment.centerLeft,
-                child: pw.Image(otherStationImages[station]!, height: 10)
+                child: pw.Image(otherStationImages[station]!, height: 12)
               ),
               pw.SizedBox(height: 1),
               pw.Table(
@@ -698,14 +730,14 @@ class DutyPdfGenerator {
                   horizontalInside: pw.BorderSide(width: 1, color: PdfColors.black),
                 ),
                 columnWidths: {
-                  0: const pw.FlexColumnWidth(3),
+                  0: const pw.FlexColumnWidth(4.5),
                   1: const pw.FlexColumnWidth(0.8),
                   2: const pw.FlexColumnWidth(8),
                 },
                 children: [
                   _buildSummaryRow(_img(texts.offDuty), count: otherStationsData[station]!['offCount']!, details: otherStationsData[station]!['offDetails']!),
                   _buildSummaryRow(_img(texts.onDuty), count: otherStationsData[station]!['onCount']!, details: otherStationsData[station]!['onDetails']!),
-                  _buildSummaryRow(_img(texts.specialDuty), count: otherStationsData[station]!['specialCount']!, details: otherStationsData[station]!['specialDetails']!),
+                  _buildSummaryRow(_img(texts.specialDuty, height: 20), count: otherStationsData[station]!['specialCount']!, details: otherStationsData[station]!['specialDetails']!),
                   _buildSummaryRow(_img(texts.leave), count: otherStationsData[station]!['leaveCount']!, details: otherStationsData[station]!['leaveDetails']!),
                   _buildSummaryRow(_img(texts.total), count: otherStationsData[station]!['total']!, isTotal: true),
                 ],
@@ -716,8 +748,12 @@ class DutyPdfGenerator {
     );
   }
 
-  static pw.Widget _img(pw.MemoryImage img) => pw.Image(img, height: 10.5);
-  static pw.Widget _txt(String text) => pw.Text(text, style: pw.TextStyle(fontSize: 7.5));
+  static pw.Widget _img(pw.MemoryImage img, {double height = 12.5}) => pw.FittedBox(
+    fit: pw.BoxFit.scaleDown,
+    alignment: pw.Alignment.centerLeft,
+    child: pw.Image(img, height: height),
+  );
+  static pw.Widget _txt(String text) => pw.Text(text, style: pw.TextStyle(fontSize: 9));
 
   static String _formatCount(String count) {
     final parsed = int.tryParse(count.trim());
@@ -733,7 +769,7 @@ class DutyPdfGenerator {
     return pw.TableRow(
       children: [
         pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(vertical: 2.0, horizontal: 4),
+          padding: pw.EdgeInsets.symmetric(vertical: _dynamicPadding, horizontal: 4),
           child: pw.Align(
             alignment: pw.Alignment.centerLeft,
             child: titleWidget,
@@ -741,20 +777,22 @@ class DutyPdfGenerator {
         ),
         // Cell for Count
         pw.Container(
-          height: 14,
+          padding: pw.EdgeInsets.symmetric(vertical: _dynamicPadding),
           alignment: pw.Alignment.center,
           child: pw.Text(
             formattedCount, 
-            style: pw.TextStyle(fontSize: 9, fontWeight: isTotal ? pw.FontWeight.bold : null),
+            style: pw.TextStyle(fontSize: 10, fontWeight: isTotal ? pw.FontWeight.bold : null),
+            textAlign: pw.TextAlign.center,
           ),
         ),
         // Cell for Details/Remarks
         pw.Container(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2.0),
+          padding: pw.EdgeInsets.symmetric(horizontal: 4, vertical: _dynamicPadding),
           alignment: isTotal ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
           child: pw.Text(
             details, 
-            style: pw.TextStyle(fontSize: 9, fontWeight: isTotal ? pw.FontWeight.bold : null),
+            style: pw.TextStyle(fontSize: 10, fontWeight: isTotal ? pw.FontWeight.bold : null),
+            textAlign: isTotal ? pw.TextAlign.right : pw.TextAlign.left,
           ),
         ),
       ],
@@ -779,30 +817,14 @@ class DutyPdfGenerator {
     List<String> processed = [];
     
     for (var part in parts) {
-      bool isWFRO = part.toUpperCase().contains('WFRO');
       String num = part.replaceAll(RegExp(r'[^0-9]'), '');
       
-      if (!isWFRO && personnelList != null && num.isNotEmpty) {
-        try {
-          final person = personnelList.firstWhere((p) {
-            String pNum = RegExp(r'\d+').firstMatch(p.idNumber)?.group(0) ?? '';
-            return p.idNumber == part || (pNum.isNotEmpty && int.tryParse(pNum) == int.tryParse(num));
-          });
-          if (person.gender == 'Female' || person.idNumber.toUpperCase().contains('WFRO')) {
-            isWFRO = true;
-          }
-        } catch (_) {}
-      }
-
       if (num.isNotEmpty) {
-        if (isWFRO) {
-          processed.add('W-$num');
-        } else {
-          processed.add(num);
-        }
+        processed.add(num);
       }
     }
     
+    processed.sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
     return processed.join(', ');
   }
 
@@ -843,28 +865,10 @@ class DutyPdfGenerator {
 
     List<String> result = [];
     for (var id in ids) {
-      bool isWFRO = id.toUpperCase().contains('WFRO');
       final m = RegExp(r'\d+').firstMatch(id);
       
-      if (!isWFRO && personnelList != null && m != null) {
-        try {
-          String num = m.group(0)!;
-          final person = personnelList.firstWhere((p) {
-            String pNum = RegExp(r'\d+').firstMatch(p.idNumber)?.group(0) ?? '';
-            return p.idNumber == id || (pNum.isNotEmpty && int.tryParse(pNum) == int.tryParse(num));
-          });
-          if (person.gender == 'Female' || person.idNumber.toUpperCase().contains('WFRO')) {
-            isWFRO = true;
-          }
-        } catch (_) {}
-      }
-
       if (m != null) {
-        if (isWFRO) {
-          result.add('W-${m.group(0)!}');
-        } else {
-          result.add(m.group(0)!);
-        }
+        result.add(m.group(0)!);
       }
     }
     return result.join(', ');
@@ -889,7 +893,7 @@ class DutyPdfGenerator {
             padding: const pw.EdgeInsets.all(3),
             child: pw.Text(
               'PERFORMA DUTY DETAILING OF PERSONNEL - ${AppConfig.stationNamePdfHeader}',
-              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
               textAlign: pw.TextAlign.center,
             ),
           ),
@@ -897,32 +901,32 @@ class DutyPdfGenerator {
 
           // Complex Header
           pw.Container(
-            height: 32,
+            height: 42,
             child: pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.stretch,
               children: [
-                pw.Expanded(flex: 6, child: _headerCell('SL\nNo.', size: 6, rightBorder: true)),
+                pw.Expanded(flex: 7, child: _headerCell('SL\nNo.', size: 7, rightBorder: true)),
                 
-                pw.Expanded(flex: 30, child: _headerCell('VEHICLE & EQUIPMENTS', size: 7, rightBorder: true)),
+                pw.Expanded(flex: 27, child: _headerCell('VEHICLE & EQUIPMENTS', size: 7, rightBorder: true)),
 
                 // POSTED PERSONNEL Group
                 pw.Expanded(
-                  flex: 7 + 28 + 5 + 7, // SFRO + FRO + KHG + FRO(D)
+                  flex: 7 + 24 + 7 + 7, // SFRO + FRO + KHG + FRO(D)
                   child: pw.Container(
                     decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 1, color: PdfColors.black))),
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                       children: [
-                        _headerCell('POSTED PERSONNEL', size: 7),
+                        _headerCell('POSTED PERSONNEL', size: 8),
                         _hDivider(),
                         pw.Expanded(
                           child: pw.Row(
                             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                             children: [
-                              pw.Expanded(flex: 7, child: _headerCell(isSfroInCharge ? 'SFRO\n(I/C)' : 'SFRO', size: 6.5, rightBorder: true)),
-                              pw.Expanded(flex: 28, child: _headerCell('FRO', size: 6.5, rightBorder: true)),
-                              pw.Expanded(flex: 5, child: _headerCell('KHG', size: 6.5, rightBorder: true)),
-                              pw.Expanded(flex: 7, child: _headerCell('FRO(D)', size: 5.5)),
+                              pw.Expanded(flex: 7, child: _headerCell(isSfroInCharge ? 'SFRO\n(I/C)' : 'SFRO', size: 7.5, rightBorder: true)),
+                              pw.Expanded(flex: 24, child: _headerCell('FRO', size: 7.5, rightBorder: true)),
+                              pw.Expanded(flex: 7, child: _headerCell('KHG', size: 7.5, rightBorder: true)),
+                              pw.Expanded(flex: 7, child: _headerCell('FRO(D)', size: 6.5)),
                             ],
                           ),
                         ),
@@ -933,20 +937,20 @@ class DutyPdfGenerator {
 
                 // CONDITION Group
                 pw.Expanded(
-                  flex: 10 + 10, // MORNING + EVENING
+                  flex: 9 + 9, // MORNING + EVENING
                   child: pw.Container(
                     decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 1, color: PdfColors.black))),
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                       children: [
-                        _headerCell('CONDITION OF VEHICLE\n& EQUIPMENT', size: 5),
+                        _headerCell('CONDITION OF VEHICLE\n& EQUIPMENT', size: 6.5),
                         _hDivider(),
                         pw.Expanded(
                           child: pw.Row(
                             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                             children: [
-                              pw.Expanded(flex: 10, child: _headerCell('MORNING\nROLLCALL', size: 5, rightBorder: true)),
-                              pw.Expanded(flex: 10, child: _headerCell('EVENING\nROLLCALL', size: 5)),
+                              pw.Expanded(flex: 9, child: _headerCell('MORNING\nROLLCALL', size: 7, rightBorder: true)),
+                              pw.Expanded(flex: 9, child: _headerCell('EVENING\nROLLCALL', size: 7)),
                             ],
                           ),
                         ),
@@ -955,7 +959,7 @@ class DutyPdfGenerator {
                   ),
                 ),
 
-                pw.Expanded(flex: 9, child: _headerCell('Remarks', size: 7)),
+                pw.Expanded(flex: 9, child: _headerCell('Remarks', size: 8)),
               ],
             ),
           ),
@@ -974,14 +978,14 @@ class DutyPdfGenerator {
                         horizontalInside: pw.BorderSide(width: 1, color: PdfColors.black),
                       ),
                       columnWidths: {
-                        0: const pw.FlexColumnWidth(6),
-                        1: const pw.FlexColumnWidth(30),
+                        0: const pw.FlexColumnWidth(7),
+                        1: const pw.FlexColumnWidth(27),
                         2: const pw.FlexColumnWidth(7),
-                        3: const pw.FlexColumnWidth(28),
-                        4: const pw.FlexColumnWidth(5),
+                        3: const pw.FlexColumnWidth(24),
+                        4: const pw.FlexColumnWidth(7),
                         5: const pw.FlexColumnWidth(7),
-                        6: const pw.FlexColumnWidth(10),
-                        7: const pw.FlexColumnWidth(10),
+                        6: const pw.FlexColumnWidth(9),
+                        7: const pw.FlexColumnWidth(9),
                         8: const pw.FlexColumnWidth(9),
                       },
                       children: List.from(currentNormalRows),
@@ -1023,13 +1027,13 @@ class DutyPdfGenerator {
                         verticalInside: pw.BorderSide(width: 1, color: PdfColors.black),
                       ),
                       columnWidths: {
-                        0: const pw.FlexColumnWidth(6),
-                        1: const pw.FlexColumnWidth(30),
+                        0: const pw.FlexColumnWidth(7),
+                        1: const pw.FlexColumnWidth(27),
                         2: const pw.FlexColumnWidth(7),
-                        3: const pw.FlexColumnWidth(28),
-                        4: const pw.FlexColumnWidth(5),
+                        3: const pw.FlexColumnWidth(24),
+                        4: const pw.FlexColumnWidth(7),
                         5: const pw.FlexColumnWidth(7),
-                        6: const pw.FlexColumnWidth(29), // 10 + 10 + 9
+                        6: const pw.FlexColumnWidth(27), // 9 + 9 + 9
                       },
                       children: [
                         pw.TableRow(
@@ -1040,7 +1044,7 @@ class DutyPdfGenerator {
                             _dataCell(_extractAndSortNumbers(v.fro, personnelList), align: pw.TextAlign.center),
                             _dataCell(_extractNumbers(v.khg), align: pw.TextAlign.center),
                             _dataCell(_extractNumbers(v.froD), align: pw.TextAlign.center),
-                            _dataCell(mergedText, align: pw.TextAlign.center, size: v.isAttached ? 6.5 : 8),
+                            _dataCell(mergedText, align: pw.TextAlign.center, size: v.isAttached ? (6.5) : (8)),
                           ]
                         )
                       ]
@@ -1084,9 +1088,9 @@ class DutyPdfGenerator {
                       verticalInside: pw.BorderSide(width: 1, color: PdfColors.black),
                     ),
                     columnWidths: {
-                      0: const pw.FlexColumnWidth(83),
-                      1: const pw.FlexColumnWidth(10),
-                      2: const pw.FlexColumnWidth(10),
+                      0: const pw.FlexColumnWidth(79),
+                      1: const pw.FlexColumnWidth(9),
+                      2: const pw.FlexColumnWidth(9),
                       3: const pw.FlexColumnWidth(9),
                     },
                     children: [
@@ -1094,13 +1098,14 @@ class DutyPdfGenerator {
                         children: [
                           pw.Container(
                             padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 3),
-                            child: pw.Row(
-                              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                            child: pw.Wrap(
+                              spacing: 15,
+                              runSpacing: 4,
                               children: [
-                                pw.Text('Phone Duty: $phoneDuty', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
-                                pw.Text('Messenger: $messenger', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
-                                pw.Text('Sentry Duty: $sentryDuty', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
-                                pw.Text('Control Room: $controlRoom', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                                pw.Text('Phone Duty: $phoneDuty', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                                pw.Text('Messenger: $messenger', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                                pw.Text('Sentry Duty: $sentryDuty', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                                pw.Text('Watch Room/Wireless: $controlRoom', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                                 pw.SizedBox(width: 2),
                               ]
                             )
@@ -1129,7 +1134,7 @@ class DutyPdfGenerator {
   static pw.Widget _vDivider() => pw.Container(width: 1, color: PdfColors.black);
   static pw.Widget _hDivider() => pw.Container(height: 1, color: PdfColors.black);
 
-  static pw.Widget _headerCell(String text, {double size = 8, bool rightBorder = false}) {
+  static pw.Widget _headerCell(String text, {double size = 9, bool rightBorder = false}) {
     return pw.Container(
       decoration: rightBorder ? const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 1, color: PdfColors.black))) : null,
       padding: const pw.EdgeInsets.symmetric(vertical: 2.0, horizontal: 1),
@@ -1142,9 +1147,9 @@ class DutyPdfGenerator {
     );
   }
 
-  static pw.Widget _dataCell(String text, {pw.TextAlign align = pw.TextAlign.left, double size = 9}) {
+  static pw.Widget _dataCell(String text, {pw.TextAlign align = pw.TextAlign.left, double size = 10}) {
     return pw.Container(
-      padding: const pw.EdgeInsets.symmetric(vertical: 2.5, horizontal: 2),
+      padding: pw.EdgeInsets.symmetric(vertical: _dynamicPadding, horizontal: 2),
       alignment: align == pw.TextAlign.center ? pw.Alignment.center : pw.Alignment.centerLeft,
       child: pw.Text(
         text,
@@ -1155,11 +1160,11 @@ class DutyPdfGenerator {
   }
 
   static String _toRoman(int number, {int? fallbackIndex}) {
-    if (number > 20 && fallbackIndex != null) {
+    if (number > 30 && fallbackIndex != null) {
       number = fallbackIndex;
     }
-    if (number < 1 || number > 20) return number.toString();
-    const numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX'];
+    if (number < 1 || number > 30) return number.toString();
+    const numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI', 'XXII', 'XXIII', 'XXIV', 'XXV', 'XXVI', 'XXVII', 'XXVIII', 'XXIX', 'XXX'];
     return numerals[number - 1];
   }
 
@@ -1185,7 +1190,7 @@ class DutyPdfGenerator {
         padding: const pw.EdgeInsets.only(top: 2, right: 2, left: 4),
         child: pw.Text(
           pageNum.toString().padLeft(2, '0'), 
-          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)
+          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)
         )
       );
     }

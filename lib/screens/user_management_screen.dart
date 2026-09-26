@@ -232,7 +232,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                'Designed and created by Sreenath KK, FRS Station.',
+                                'Designed and created by Sreenath KK, FRS Meenchanda.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Colors.tealAccent.withOpacity(0.8),

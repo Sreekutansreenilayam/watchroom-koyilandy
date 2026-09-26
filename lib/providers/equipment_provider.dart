@@ -29,7 +29,7 @@ class EquipmentProvider with ChangeNotifier {
     });
   }
 
-  Future<String> addEquipmentHead(String name, String category) async {
+  Future<String> addEquipmentHead(String name, String shortName, String category) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -43,6 +43,7 @@ class EquipmentProvider with ChangeNotifier {
       final newHead = EquipmentHead(
         id: '',
         name: name,
+        shortName: shortName,
         category: category,
         totalQty: 0,
         serviceableQty: 0,
@@ -65,6 +66,7 @@ class EquipmentProvider with ChangeNotifier {
     required DateTime dateTakenIntoCharge,
     required int quantity,
     required String brand,
+    String equipmentId = '',
     required String serialNumbers,
     DateTime? warrantyExpiry,
     DateTime? lastServiceDate,
@@ -83,6 +85,7 @@ class EquipmentProvider with ChangeNotifier {
         dateTakenIntoCharge: dateTakenIntoCharge,
         quantity: quantity,
         brand: brand,
+        equipmentId: equipmentId,
         serialNumbers: serialNumbers,
         warrantyExpiry: warrantyExpiry,
         lastServiceDate: lastServiceDate,
@@ -117,6 +120,7 @@ class EquipmentProvider with ChangeNotifier {
     required String headId,
     required String type,
     required String status,
+    required String equipmentId,
     required int quantityAffected,
     required DateTime fromDate,
     DateTime? toDate,
@@ -132,6 +136,7 @@ class EquipmentProvider with ChangeNotifier {
         headId: headId,
         type: type,
         status: status,
+        equipmentId: equipmentId,
         quantityAffected: quantityAffected,
         fromDate: fromDate,
         toDate: toDate,
@@ -217,9 +222,10 @@ class EquipmentProvider with ChangeNotifier {
       await batch.commit();
   }
 
-  Future<void> updateEquipmentHead(String id, String name, String category) async {
+  Future<void> updateEquipmentHead(String id, String name, String shortName, String category) async {
     await _firestore.collection('equipment_heads').doc(id).update({
       'name': name,
+      'shortName': shortName,
       'category': category,
     });
   }

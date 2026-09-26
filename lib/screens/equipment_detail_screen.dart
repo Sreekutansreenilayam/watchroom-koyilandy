@@ -145,6 +145,11 @@ class EquipmentDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
+            if (entry.equipmentId.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text('ID: ${entry.equipmentId}', style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 15)),
+              ),
             if (entry.brand.isNotEmpty)
               Text('Brand/Make: ${entry.brand}', style: const TextStyle(color: Colors.white70)),
             if (entry.serialNumbers.isNotEmpty)

@@ -9,7 +9,7 @@ class TextToImageService {
     double fontSize = 32, // Generate at higher scale for crisp PDF printing
     FontWeight fontWeight = FontWeight.normal,
     Color color = Colors.black,
-    TextAlign textAlign = TextAlign.center,
+    TextAlign textAlign = TextAlign.left,
   }) async {
     final textPainter = TextPainter(
       text: TextSpan(

@@ -38,7 +38,7 @@ class SentryPdfGenerator {
                 style: const pw.TextStyle(fontSize: 14),
               ),
               pw.SizedBox(height: 24),
-              _buildDailySlotsTable(dayRegister, personnelList),
+              _buildDailySlotsTable(dayRegister, personnelList, monthRegisters),
               pw.SizedBox(height: 24),
               pw.Align(
                 alignment: pw.Alignment.centerLeft,
@@ -106,35 +106,98 @@ class SentryPdfGenerator {
     return pdf.save();
   }
 
-  static pw.Widget _buildDailySlotsTable(
+static pw.Widget _buildDailySlotsTable(
     SentryRegisterModel reg,
     List<Manpower> personnelList,
+    List<SentryRegisterModel> allRegisters,
   ) {
-    return pw.TableHelper.fromTextArray(
-      context: null,
+    return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
-      headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
-      headerHeight: 25,
-      cellHeight: 25,
       columnWidths: const {
         0: pw.FlexColumnWidth(2.5),
         1: pw.FlexColumnWidth(2.5),
         2: pw.FlexColumnWidth(5.0),
+        3: pw.FlexColumnWidth(3.0),
+        4: pw.FlexColumnWidth(3.0),
       },
-      cellAlignments: {0: pw.Alignment.center, 1: pw.Alignment.center, 2: pw.Alignment.centerLeft},
-      headers: ['Time Slot', 'ID Number', 'Personnel Name'],
-      data: reg.slots.map((s) {
-        String name = '-';
-        String idNumber = '-';
-        if (s.personnelId.isNotEmpty) {
-          final p = personnelList
-              .where((m) => m.idNumber == s.personnelId)
-              .firstOrNull;
-          name = p != null ? p.name : s.personnelId;
-          idNumber = s.personnelId;
-        }
-        return [s.timeLabel, idNumber, name];
-      }).toList(),
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          children: [
+            _tableHeaderCell('Time Slot'),
+            _tableHeaderCell('ID Number'),
+            _tableHeaderCell('Personnel Name'),
+            _tableHeaderCell('Green Duty\n(01-03 & 03-05)'),
+            _tableHeaderCell('Red Duty\n(23-01 & 05-07)'),
+          ],
+        ),
+        ...reg.slots.map((s) {
+          String name = '-';
+          String idNumber = '-';
+          String lastGreen = '-';
+          String lastRed = '-';
+
+          if (s.personnelId.isNotEmpty) {
+            final p = personnelList.where((m) => m.idNumber == s.personnelId).firstOrNull;
+            name = p != null ? p.name : s.personnelId;
+            idNumber = s.personnelId;
+
+            // Find last green/red duty strictly BEFORE this register's date
+            List<SentryRegisterModel> sortedHistory = List.from(allRegisters)
+              ..sort((a, b) => b.date.compareTo(a.date));
+
+            for (var historyReg in sortedHistory) {
+              if (historyReg.date.isBefore(DateTime(reg.date.year, reg.date.month, reg.date.day))) {
+                for (int i = 0; i < historyReg.slots.length; i++) {
+                  if (historyReg.slots[i].personnelId == s.personnelId) {
+                    if ((i == 8 || i == 9) && lastGreen == '-') {
+                      lastGreen = DateFormat('dd/MM/yy').format(historyReg.date);
+                    }
+                    if ((i == 7 || i == 10) && lastRed == '-') {
+                      lastRed = DateFormat('dd/MM/yy').format(historyReg.date);
+                    }
+                  }
+                }
+                if (lastGreen != '-' && lastRed != '-') break;
+              }
+            }
+          }
+
+          return pw.TableRow(
+            children: [
+              _tableDataCell(s.timeLabel),
+              _tableDataCell(idNumber),
+              _tableDataCell(name, alignLeft: true),
+              _tableDataCell(lastGreen, textColor: PdfColors.green),
+              _tableDataCell(lastRed, textColor: PdfColors.red),
+            ],
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  static pw.Widget _tableHeaderCell(String text) {
+    return pw.Container(
+      height: 25,
+      alignment: pw.Alignment.center,
+      child: pw.Text(
+        text,
+        textAlign: pw.TextAlign.center,
+        style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+      ),
+    );
+  }
+
+  static pw.Widget _tableDataCell(String text, {bool alignLeft = false, PdfColor? textColor}) {
+    return pw.Container(
+      height: 25,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 4),
+      alignment: alignLeft ? pw.Alignment.centerLeft : pw.Alignment.center,
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(fontSize: 10, color: textColor),
+      ),
     );
   }
 
@@ -367,7 +430,21 @@ class SentryPdfGenerator {
 
     int daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
     var activeMembers = personnelList
-        .where((p) => ['FRO', 'KHG', 'Trainees'].contains(p.designation) && p.isActive)
+        .where((p) {
+           if (!['FRO', 'KHG', 'Trainees'].contains(p.designation)) return false;
+           // If they are active, definitely include them
+           if (p.isActive) return true;
+           // If they are inactive but have duties or were a spare this month, include them!
+           bool hasDuties = memberDayDuties.containsKey(p.idNumber);
+           bool hasSpares = false;
+           for (var spares in spareDuties.values) {
+              if (spares.contains(p.idNumber)) {
+                 hasSpares = true;
+                 break;
+              }
+           }
+           return hasDuties || hasSpares;
+        })
         .toList();
 
     List<pw.Widget> rows = [];

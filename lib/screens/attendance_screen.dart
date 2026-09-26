@@ -128,18 +128,36 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return false;
   }
 
+  bool _isBeforeJoinDate(String personId, DateTime cellDate) {
+    try {
+      final person = context.read<ManpowerProvider>().personnelList.firstWhere((p) => p.id == personId);
+      if (person.stationIn != null) {
+        final joinDateOnly = DateTime(person.stationIn!.year, person.stationIn!.month, person.stationIn!.day);
+        if (cellDate.isBefore(joinDateOnly)) {
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  bool _isInvalidDate(String personId, DateTime cellDate) {
+    return _isAfterExitDate(personId, cellDate) || _isBeforeJoinDate(personId, cellDate);
+  }
+
   void _toggleCellSelection(String cellId) {
-    if (!AccessControl.isOnDuty(context)) {
+    final parsed = CellIdParts.parse(cellId, _selectedDate);
+    if (parsed == null) return;
+
+    if (!AccessControl.canEditAttendance(context, parsed.personId)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('You are not on duty this time. You may ask ${AccessControl.getOnDutySfroNames(context)} for the same.'),
+          content: Text('You do not have permission to edit this attendance. You may ask ${AccessControl.getOnDutySfroNames(context)} for the same.'),
           backgroundColor: Colors.redAccent,
         ),
       );
       return;
     }
-    final parsed = CellIdParts.parse(cellId, _selectedDate);
-    if (parsed == null) return;
 
     final cellDate = DateTime(parsed.year, parsed.month, parsed.day);
     if (AccessControl.isDateLocked(context, cellDate)) {
@@ -149,9 +167,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return;
     }
 
-    if (_isAfterExitDate(parsed.personId, cellDate)) {
+    if (_isInvalidDate(parsed.personId, cellDate)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cannot mark attendance after removal date (ഒഴിവാക്കിയ തീയതിക്ക് ശേഷം അറ്റൻഡൻസ് രേഖപ്പെടുത്താൻ സാധിക്കില്ല).'), backgroundColor: Colors.redAccent),
+        const SnackBar(content: Text('Cannot mark attendance on this date (ജോയിൻ ചെയ്യുന്നതിന് മുൻപോ പോയതിനു ശേഷമോ അറ്റൻഡൻസ് രേഖപ്പെടുത്താൻ സാധിക്കില്ല).'), backgroundColor: Colors.redAccent),
       );
       return;
     }
@@ -838,19 +856,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 scrollDirection: Axis.horizontal,
                                 child: GestureDetector(
                                   onLongPressStart: (details) {
-                                    if (!AccessControl.isOnDuty(context)) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('You are not on duty this time. You may ask ${AccessControl.getOnDutySfroNames(context)} for the same.'),
-                                          backgroundColor: Colors.redAccent,
-                                        ),
-                                      );
-                                      return;
-                                    }
                                     String? cellId = _getCellIdFromOffset(details.localPosition, filteredPersonnel);
                                     if (cellId != null) {
                                       final parsed = CellIdParts.parse(cellId, _selectedDate);
                                       if (parsed == null) return;
+                                      
+                                      if (!AccessControl.canEditAttendance(context, parsed.personId)) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('You do not have permission to edit this attendance. You may ask ${AccessControl.getOnDutySfroNames(context)} for the same.'),
+                                            backgroundColor: Colors.redAccent,
+                                          ),
+                                        );
+                                        return;
+                                      }
 
                                       final cellDate = DateTime(parsed.year, parsed.month, parsed.day);
                                       if (AccessControl.isDateLocked(context, cellDate)) {
@@ -860,9 +879,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                         return;
                                       }
 
-                                      if (_isAfterExitDate(parsed.personId, cellDate)) {
+                                      if (_isInvalidDate(parsed.personId, cellDate)) {
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Cannot mark attendance after removal date (ഒഴിവാക്കിയ തീയതിക്ക് ശേഷം അറ്റൻഡൻസ് രേഖപ്പെടുത്താൻ സാധിക്കില്ല).'), backgroundColor: Colors.redAccent),
+                                          const SnackBar(content: Text('Cannot mark attendance on this date (ജോയിൻ ചെയ്യുന്നതിന് മുൻപോ പോയതിനു ശേഷമോ അറ്റൻഡൻസ് രേഖപ്പെടുത്താൻ സാധിക്കില്ല).'), backgroundColor: Colors.redAccent),
                                         );
                                         return;
                                       }
@@ -891,7 +910,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                       final parsed = CellIdParts.parse(cellId, _selectedDate);
                                       if (parsed != null) {
                                         final cellDate = DateTime(parsed.year, parsed.month, parsed.day);
-                                        if (!AccessControl.isDateLocked(context, cellDate) && !_isAfterExitDate(parsed.personId, cellDate)) {
+                                        if (!AccessControl.isDateLocked(context, cellDate) && !_isInvalidDate(parsed.personId, cellDate)) {
                                           setState(() {
                                             _currentlyDraggingCells.add(cellId);
                                           });
@@ -1011,6 +1030,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                                   builder: (context) {
                                                     final cellId = "${person.id}_${prevYearMonth}_$day";
                                                     final isSelected = _selectedCells.contains(cellId);
+                                                    
+                                                    final parsed = CellIdParts.parse(cellId, _selectedDate);
+                                                    final cellDate = parsed != null ? DateTime(parsed.year, parsed.month, parsed.day) : DateTime.now();
+                                                    final isInvalid = _isInvalidDate(person.id, cellDate);
 
                                                     final isBeingDragged = _currentlyDraggingCells.contains(cellId);
                                                     final prevData = attendanceProvider.prevAttendanceMap[person.id];
@@ -1024,7 +1047,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                                       color: Colors.white.withOpacity(0.02),
                                                       child: InkWell(
                                                         onTap: () => _toggleCellSelection(cellId),
-                                                        child: Container(
+                                                        child: Opacity(
+                                                          opacity: isInvalid ? 0.2 : 1.0,
+                                                          child: Container(
                                                           width: 32,
                                                           height: 32,
                                                           alignment: Alignment.center,
@@ -1052,6 +1077,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                                                   ),
                                                                 ),
                                                         ),
+                                                        ),
                                                       ),
                                                     );
                                                   }
@@ -1061,6 +1087,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                                   builder: (context) {
                                                     final cellId = "${person.id}_${currentYearMonth}_$day";
                                                     final isSelected = _selectedCells.contains(cellId);
+                                                    
+                                                    final parsed = CellIdParts.parse(cellId, _selectedDate);
+                                                    final cellDate = parsed != null ? DateTime(parsed.year, parsed.month, parsed.day) : DateTime.now();
+                                                    final isInvalid = _isInvalidDate(person.id, cellDate);
 
                                                     final isBeingDragged = _currentlyDraggingCells.contains(cellId);
                                                     final status = isBeingDragged ? _dragFillValue! : (dailyStatusMap[day] ?? '');
@@ -1071,7 +1101,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                                       alignment: Alignment.center,
                                                       child: InkWell(
                                                         onTap: () => _toggleCellSelection(cellId),
-                                                        child: Container(
+                                                        child: Opacity(
+                                                          opacity: isInvalid ? 0.2 : 1.0,
+                                                          child: Container(
                                                           width: 32,
                                                           height: 32,
                                                           alignment: Alignment.center,
@@ -1098,6 +1130,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                                                     ),
                                                                   ),
                                                                 ),
+                                                        ),
                                                         ),
                                                       ),
                                                     );

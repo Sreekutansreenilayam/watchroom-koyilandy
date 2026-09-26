@@ -20,6 +20,7 @@ class _VehicleMasterRegistryScreenState extends State<VehicleMasterRegistryScree
   // Text controllers for form inputs
   late TextEditingController _regNumberController;
   late TextEditingController _typeController;
+  late TextEditingController _shortNameController;
   late TextEditingController _callSignController;
   late TextEditingController _chassisNumberController;
   late TextEditingController _engineNumberController;
@@ -74,6 +75,7 @@ class _VehicleMasterRegistryScreenState extends State<VehicleMasterRegistryScree
 
     _regNumberController = TextEditingController(text: v?.regNumber ?? '');
     _typeController = TextEditingController(text: v?.type ?? '');
+    _shortNameController = TextEditingController(text: v?.shortName ?? '');
     _callSignController = TextEditingController(text: v?.callSign ?? '');
     _chassisNumberController = TextEditingController(text: v?.chassisNumber ?? '');
     _engineNumberController = TextEditingController(text: v?.engineNumber ?? '');
@@ -440,6 +442,7 @@ class _VehicleMasterRegistryScreenState extends State<VehicleMasterRegistryScree
       id: widget.vehicle?.id ?? '',
       regNumber: _regNumberController.text.trim(),
       type: _typeController.text.trim().isEmpty ? _callSignController.text.trim() : _typeController.text.trim(),
+      shortName: _shortNameController.text.trim(),
       status: _status,
       waterLevel: water,
       fuelLevel: fuel,
@@ -549,6 +552,8 @@ class _VehicleMasterRegistryScreenState extends State<VehicleMasterRegistryScree
                         _buildSectionHeader('1. Identification'),
                         _buildTextField(controller: _callSignController, label: 'Vehicle ID / Call Sign', validator: (val) => val == null || val.isEmpty ? 'Required' : null),
                         _buildTextField(controller: _regNumberController, label: 'Registration Number', validator: (val) => val == null || val.isEmpty ? 'Required' : null),
+                        _buildTextField(controller: _typeController, label: 'Vehicle Type (e.g. FOAM TENDER)'),
+                        _buildTextField(controller: _shortNameController, label: 'Short Name (e.g. F/T, MIST)'),
                         _buildTextField(controller: _chassisNumberController, label: 'Chassis Number'),
                         _buildTextField(controller: _engineNumberController, label: 'Engine Number'),
                         _buildTextField(controller: _makeModelController, label: 'Make / Model'),

@@ -27,10 +27,17 @@ class ManpowerProvider with ChangeNotifier {
     final target = DateTime(targetDate.year, targetDate.month, targetDate.day);
     
     return _personnelList.where((m) {
+      if (m.stationIn != null) {
+        final stIn = DateTime(m.stationIn!.year, m.stationIn!.month, m.stationIn!.day);
+        if (target.isBefore(stIn)) {
+          return false;
+        }
+      }
       if (m.exitDate != null) {
         final exitDate = DateTime(m.exitDate!.year, m.exitDate!.month, m.exitDate!.day);
-        // If target date is on or after exit date, they are inactive on that date
-        if (!target.isBefore(exitDate)) {
+        // If target date is strictly after exit date, they are inactive on that date
+        // (They are still active ON their exit date)
+        if (target.isAfter(exitDate)) {
            return false;
         }
       } else if (!m.isActive) {

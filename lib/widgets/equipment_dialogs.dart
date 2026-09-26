@@ -11,6 +11,7 @@ class EquipmentDialogs {
   static void showAddEquipmentHeadDialog(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
+    final shortNameController = TextEditingController();
     String selectedCategory = 'Others (മറ്റുള്ളവ)';
     final categories = [
       'Personal Protective Eqpt (വ്യക്തിഗത സുരക്ഷാ ഉപകരണങ്ങൾ)',
@@ -45,6 +46,21 @@ class EquipmentDialogs {
                     ),
                   ),
                   validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: shortNameController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Short Name (Optional)',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.orange),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
@@ -83,7 +99,7 @@ class EquipmentDialogs {
                 if (formKey.currentState!.validate()) {
                   final provider = Provider.of<EquipmentProvider>(context, listen: false);
                   try {
-                    final newId = await provider.addEquipmentHead(nameController.text.trim(), selectedCategory);
+                    final newId = await provider.addEquipmentHead(nameController.text.trim(), shortNameController.text.trim(), selectedCategory);
                     final newHead = EquipmentHead(
                       id: newId,
                       name: nameController.text.trim(),
@@ -121,6 +137,7 @@ class EquipmentDialogs {
   static void showEditEquipmentHeadDialog(BuildContext context, EquipmentHead head) {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: head.name);
+    final shortNameController = TextEditingController(text: head.shortName);
     String selectedCategory = head.category;
     final categories = [
       'Personal Protective Eqpt (വ്യക്തിഗത സുരക്ഷാ ഉപകരണങ്ങൾ)',
@@ -160,6 +177,21 @@ class EquipmentDialogs {
                   validator: (value) => value == null || value.isEmpty ? 'Required' : null,
                 ),
                 const SizedBox(height: 16),
+                TextFormField(
+                  controller: shortNameController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Short Name (Optional)',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.orange),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: selectedCategory,
                   dropdownColor: const Color(0xFF2C2C2C),
@@ -197,7 +229,7 @@ class EquipmentDialogs {
                   final provider = Provider.of<EquipmentProvider>(context, listen: false);
                   Navigator.pop(context);
                   try {
-                    await provider.updateEquipmentHead(head.id, nameController.text.trim(), selectedCategory);
+                    await provider.updateEquipmentHead(head.id, nameController.text.trim(), shortNameController.text.trim(), selectedCategory);
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -217,6 +249,7 @@ class EquipmentDialogs {
     final formKey = GlobalKey<FormState>();
     final quantityController = TextEditingController();
     final brandController = TextEditingController();
+    final equipmentIdController = TextEditingController();
     final serialController = TextEditingController();
     final assignedToController = TextEditingController();
     final lockerController = TextEditingController();
@@ -262,6 +295,18 @@ class EquipmentDialogs {
                         controller: brandController,
                         style: const TextStyle(color: Colors.white),
                         decoration: _inputDecoration('Brand/Make'),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: equipmentIdController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _inputDecoration('ID'),
+                        validator: (value) {
+                          if (head.totalQty > 0 && (value == null || value.trim().isEmpty)) {
+                            return 'Required since other items exist';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -375,6 +420,7 @@ class EquipmentDialogs {
                         dateTakenIntoCharge: selectedDate,
                         quantity: int.parse(quantityController.text.trim()),
                         brand: brandController.text.trim(),
+                        equipmentId: equipmentIdController.text.trim(),
                         serialNumbers: serialController.text.trim(),
                         warrantyExpiry: warrantyDate,
                         lastServiceDate: lastServiceDate,
@@ -413,14 +459,25 @@ class EquipmentDialogs {
     DateTime fromDate = DateTime.now();
     DateTime? toDate;
 
+    String? selectedEquipmentId;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
+          final provider = Provider.of<EquipmentProvider>(context, listen: false);
           return AlertDialog(
             backgroundColor: const Color(0xFF1E1E1E),
             title: const Text('Add Log / Status Change', style: TextStyle(color: Colors.white)),
-            content: SingleChildScrollView(
+            content: StreamBuilder<List<EquipmentStockEntry>>(
+              stream: provider.getStockEntries(head.id),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final entries = snapshot.data ?? [];
+                
+                return SingleChildScrollView(
               child: Form(
                 key: formKey,
                 child: Column(
@@ -438,6 +495,29 @@ class EquipmentDialogs {
                       ],
                       onChanged: (val) {
                         if (val != null) setState(() => selectedType = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    DropdownButtonFormField<String>(
+                      value: selectedEquipmentId,
+                      dropdownColor: const Color(0xFF2C2C2C),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: _inputDecoration('Select Equipment ID'),
+                      items: entries.map((e) {
+                        return DropdownMenuItem(
+                          value: e.equipmentId,
+                          child: Text('${e.equipmentId} ${e.brand.isNotEmpty ? '(${e.brand})' : ''}'),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => selectedEquipmentId = val);
+                      },
+                      validator: (value) {
+                        if (entries.length > 1 && value == null) {
+                          return 'Required when multiple equipments exist';
+                        }
+                        return null;
                       },
                     ),
                     const SizedBox(height: 12),
@@ -490,8 +570,9 @@ class EquipmentDialogs {
                   ],
                 ),
               ),
-            ),
-            actions: [
+            );
+          }),
+          actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
@@ -507,6 +588,7 @@ class EquipmentDialogs {
                         headId: head.id,
                         type: selectedType,
                         status: selectedType == 'STATUS_CHANGE' ? selectedStatus : '',
+                        equipmentId: selectedEquipmentId ?? '',
                         quantityAffected: int.parse(quantityController.text.trim()),
                         fromDate: fromDate,
                         toDate: toDate,
@@ -572,6 +654,7 @@ class EquipmentDialogs {
     final formKey = GlobalKey<FormState>();
     final quantityController = TextEditingController(text: entry.quantity.toString());
     final brandController = TextEditingController(text: entry.brand);
+    final equipmentIdController = TextEditingController(text: entry.equipmentId);
     final serialController = TextEditingController(text: entry.serialNumbers);
     final assignedToController = TextEditingController(text: entry.assignedTo);
     final lockerController = TextEditingController(text: entry.lockerNumber ?? '');
@@ -616,6 +699,12 @@ class EquipmentDialogs {
                         controller: brandController,
                         style: const TextStyle(color: Colors.white),
                         decoration: _inputDecoration('Brand/Make'),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: equipmentIdController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _inputDecoration('ID'),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -716,6 +805,7 @@ class EquipmentDialogs {
                       dateTakenIntoCharge: selectedDate,
                       quantity: int.parse(quantityController.text.trim()),
                       brand: brandController.text.trim(),
+                      equipmentId: equipmentIdController.text.trim(),
                       serialNumbers: serialController.text.trim(),
                       warrantyExpiry: warrantyDate,
                       lastServiceDate: lastServiceDate,
