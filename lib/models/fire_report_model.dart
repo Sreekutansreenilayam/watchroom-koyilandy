@@ -122,7 +122,7 @@ class FireReportModel {
 
   FireReportModel({
     required this.id,
-    this.station = 'മീഞ്ചന്ത',
+    this.station = 'കൊയിലാണ്ടി',
     required this.location,
     required this.officerInChargeId,
     required this.reportNumber,
@@ -231,7 +231,7 @@ class FireReportModel {
   factory FireReportModel.fromMap(Map<String, dynamic> map, String docId) {
     return FireReportModel(
       id: docId,
-      station: map['station'] ?? 'മീഞ്ചന്ത',
+      station: map['station'] ?? 'കൊയിലാണ്ടി',
       location: map['location'] ?? '',
       officerInChargeId: map['officerInChargeId'] ?? '',
       reportNumber: map['reportNumber'] ?? '',

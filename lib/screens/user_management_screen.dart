@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../providers/manpower_provider.dart';
 import '../models/manpower_model.dart';
 import '../providers/auth_provider.dart';
-import '../config/app_config.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});

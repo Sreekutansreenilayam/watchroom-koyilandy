@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/duty_provider.dart';
 import '../models/duty_register_model.dart';
 import 'duty_register_screen.dart';
@@ -292,8 +291,9 @@ class _DutyScreenState extends State<DutyScreen> {
                         String? accQrv = getVehName((n) => n.contains('C/S-2') || n.contains('C/S-10') || (n.contains('(QRV)') && n.contains('C/S')));
 
                         String? targetAcc;
-                        if (vehicleName == v1) targetAcc = acc1;
-                        else if (vehicleName == v2) targetAcc = acc2;
+                        if (vehicleName == v1) {
+                          targetAcc = acc1;
+                        } else if (vehicleName == v2) targetAcc = acc2;
                         else if (vehicleName == qrv) targetAcc = accQrv;
 
                         for (var v in register.vehicleAssignments) {
@@ -510,9 +510,16 @@ class _DutyScreenState extends State<DutyScreen> {
                                 _buildTableCell(
                                   'OF THE ROAD${assignment.remarks.isNotEmpty ? ' - ${assignment.remarks}' : ''}',
                                   height: h,
-                                  width: 370,
+                                  width: 290,
                                   align: Alignment.center,
-                                )
+                                ),
+                                _buildTableCell(
+                                  assignment.froD,
+                                  height: h,
+                                  width: 80,
+                                  manuallyEditedIds: assignment.manuallyEditedIds,
+                                  onTap: () => _editPersonnelFromViewer(register, assignment.vehicleName, 'FRO(D)', assignment.froD),
+                                ),
                               ]
                             : [
                                 _buildTableCell(

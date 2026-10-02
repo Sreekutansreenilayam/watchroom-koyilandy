@@ -267,23 +267,11 @@ class DutyPdfGenerator {
       }
     }
     
-    int _getSeniorityRank(String idNumber) {
-      final match = RegExp(r'\d+').firstMatch(idNumber);
-      if (match != null) {
-        String digits = match.group(0)!;
-        int num = int.parse(digits);
-        if (num < 100) return num + 200000;
-        if (num < 1000) return num + 100000;
-        if (digits.startsWith('10')) return num + 50000;
-        return num;
-      }
-      return 999999;
-    }
+
 
     // Helper function to format ID numbers by grouping consecutive identical prefixes
     String formatIdNumbers(List<String> ids) {
       if (ids.isEmpty) return '';
-      ids = List.from(ids)..sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
       List<String> result = [];
       String currentPrefix = '';
       
@@ -348,9 +336,9 @@ class DutyPdfGenerator {
     final trainingCountStr = trainingIds.isNotEmpty ? trainingIds.length.toString() : '';
     final trainingDetailsStr = formatIdNumbers(trainingIds);
     final subStationHeadCountStr = subStationHeadIds.isNotEmpty ? subStationHeadIds.length.toString() : '';
-    final subStationHeadDetailsStr = formatIdNumbers(subStationHeadIds);
+    final subStationHeadDetailsStr = '';
     final stationHeadCountStr = stationHeadIds.isNotEmpty ? stationHeadIds.length.toString() : '';
-    final stationHeadDetailsStr = formatIdNumbers(stationHeadIds);
+    final stationHeadDetailsStr = '';
 
     final hgOffDutyCountStr = (hgOffDutyIds.length + hgOffDutyDrIds.length) > 0 ? (hgOffDutyIds.length + hgOffDutyDrIds.length).toString() : '';
     final hgOffDutyDetailsStr = formatIdNumbersCombined(hgOffDutyIds, hgOffDutyDrIds);
@@ -397,7 +385,10 @@ class DutyPdfGenerator {
     final stationWriterDetailsStr = formatIdNumbers(actualStationWriterIds);
 
     final specialDutyCountStr = actualSpecialDutyIds.isNotEmpty ? actualSpecialDutyIds.length.toString() : '';
-    final specialDutyDetailsStr = formatIdNumbers(actualSpecialDutyIds);
+    String sdDetails = formatIdNumbers(actualSpecialDutyIds);
+    sdDetails = sdDetails.replaceAll(RegExp(r'\b7596\b'), '7596 (@ RFO office KKD)');
+    sdDetails = sdDetails.replaceAll(RegExp(r'\b8632\b'), '8632 (@FARSA)');
+    final specialDutyDetailsStr = sdDetails;
 
     final int parsedVacancyCount = int.tryParse(register.vacancyCount.trim()) ?? 0;
     final int stationStaffTotal = offDutyIdNumbers.length + offDutyDrIdNumbers.length +
@@ -632,7 +623,7 @@ class DutyPdfGenerator {
             _buildSummaryRow(_img(texts.weeklyLeave), count: weeklyLeaveCount, details: weeklyLeaveDetails),
             _buildSummaryRow(_img(texts.casualLeave), count: casualLeaveCount, details: casualLeaveDetails),
             _buildSummaryRow(_txt('BH/HP/RH/CML/EL/HPL/SpCL/PL'), count: otherLeaveCount, details: otherLeaveDetails),
-            _buildSummaryRow(_img(texts.specialDuty, height: 20), count: specialDutyCount, details: specialDutyDetails),
+            _buildSummaryRow(_img(texts.specialDuty, height: 20), count: specialDutyCount, detailsWidget: _coloredRichText(specialDutyDetails)),
             _buildSummaryRow(_img(texts.medicalLeave, height: 20), count: medicalLeaveCount, details: medicalLeaveDetails),
             _buildSummaryRow(_img(texts.outDuty), count: outDutyCount, details: outDutyDetails),
             _buildSummaryRow(_img(texts.training), count: trainingCount, details: trainingDetails),
@@ -764,7 +755,7 @@ class DutyPdfGenerator {
     return count;
   }
 
-  static pw.TableRow _buildSummaryRow(pw.Widget titleWidget, {String count = '', String details = '', bool isTotal = false}) {
+  static pw.TableRow _buildSummaryRow(pw.Widget titleWidget, {String count = '', String details = '', bool isTotal = false, pw.Widget? detailsWidget}) {
     final formattedCount = _formatCount(count);
     return pw.TableRow(
       children: [
@@ -789,7 +780,7 @@ class DutyPdfGenerator {
         pw.Container(
           padding: pw.EdgeInsets.symmetric(horizontal: 4, vertical: _dynamicPadding),
           alignment: isTotal ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
-          child: pw.Text(
+          child: detailsWidget ?? pw.Text(
             details, 
             style: pw.TextStyle(fontSize: 10, fontWeight: isTotal ? pw.FontWeight.bold : null),
             textAlign: isTotal ? pw.TextAlign.right : pw.TextAlign.left,
@@ -799,18 +790,58 @@ class DutyPdfGenerator {
     );
   }
 
+  static pw.Widget _coloredRichText(String fullText) {
+    List<pw.InlineSpan> spans = [];
+    String remaining = fullText;
+    
+    while (remaining.isNotEmpty) {
+      int idx1 = remaining.indexOf('(@ RFO office KKD)');
+      int idx2 = remaining.indexOf('(@FARSA)');
+      
+      int nextIdx = -1;
+      String matchStr = '';
+      if (idx1 != -1 && (idx2 == -1 || idx1 < idx2)) {
+        nextIdx = idx1;
+        matchStr = '(@ RFO office KKD)';
+      } else if (idx2 != -1) {
+        nextIdx = idx2;
+        matchStr = '(@FARSA)';
+      }
+      
+      if (nextIdx == -1) {
+        spans.add(pw.TextSpan(text: remaining));
+        break;
+      }
+      
+      if (nextIdx > 0) {
+        spans.add(pw.TextSpan(text: remaining.substring(0, nextIdx)));
+      }
+      spans.add(pw.TextSpan(text: matchStr, style: const pw.TextStyle(color: PdfColors.red)));
+      remaining = remaining.substring(nextIdx + matchStr.length);
+    }
+    
+    return pw.RichText(
+      text: pw.TextSpan(
+        style: const pw.TextStyle(fontSize: 10),
+        children: spans,
+      ),
+    );
+  }
+
   static int _getSeniorityRank(String idNumber) {
     final match = RegExp(r'\d+').firstMatch(idNumber);
     if (match != null) {
-      int num = int.parse(match.group(0)!);
-      if (num < 100) return num + 200000; // 1 or 2-digit numbers are most junior
-      if (num < 1000) return num + 100000; // 3-digit numbers are junior
+      String digits = match.group(0)!;
+      int num = int.parse(digits);
+      if (num < 100) return num + 200000;
+      if (num < 1000) return num + 100000;
+      if (digits.startsWith('1')) return num + 50000;
       return num;
     }
     return 999999;
   }
 
-  static String _extractNumbers(String text, [List<Manpower>? personnelList]) {
+  static String _extractNumbers(String text) {
     if (text.isEmpty) return '';
     
     final parts = text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty);
@@ -995,11 +1026,27 @@ class DutyPdfGenerator {
                 }
               }
 
-              for (var i = 0; i < register.vehicleAssignments.length; i++) {
-                final v = register.vehicleAssignments[i];
+              List<DutyVehicleAssignment> vehiclesToRender = List.from(register.vehicleAssignments);
+              if (AppConfig.isKoyilandy) {
+                vehiclesToRender.removeWhere((v) => v.vehicleName == 'Blower' || v.vehicleName == 'Torch set');
+                if (!vehiclesToRender.any((v) => v.vehicleName.toUpperCase().contains('TORCH'))) {
+                  vehiclesToRender.add(DutyVehicleAssignment(
+                    vehicleName: 'Torch',
+                    seniority: vehiclesToRender.length + 1,
+                    isOffRoad: false,
+                  ));
+                }
+                vehiclesToRender.sort((a, b) => a.seniority.compareTo(b.seniority));
+              }
+
+              for (var i = 0; i < vehiclesToRender.length; i++) {
+                final v = vehiclesToRender[i];
                 
                 // Migrate old vehicle names for display
                 String displayVName = v.vehicleName;
+                if (displayVName == 'TORCH') {
+                  displayVName = 'Torch';
+                }
                 final isNewRule = !register.date.isBefore(DateTime(2026, 7, 23));
                 if (displayVName == 'C/S: 1/15, 3/15, 6/15, ASKA-III & Hy.Eq-I (I-MTU)' || displayVName == 'C/S - 1, 7, 8, 13, Aska-III (I-MTU)' || displayVName == 'C/S - 1, 7, 8, 13, Aska-III (I-F/T)') {
                   displayVName = isNewRule ? 'C/S - 1, 7, 8, 13, Aska-III (I-F/T)' : 'C/S - 1, 7, 8, 13, Aska-III (I-MTU)';
@@ -1044,7 +1091,7 @@ class DutyPdfGenerator {
                             _dataCell(_extractAndSortNumbers(v.fro, personnelList), align: pw.TextAlign.center),
                             _dataCell(_extractNumbers(v.khg), align: pw.TextAlign.center),
                             _dataCell(_extractNumbers(v.froD), align: pw.TextAlign.center),
-                            _dataCell(mergedText, align: pw.TextAlign.center, size: v.isAttached ? (6.5) : (8)),
+                            _dataCell(mergedText, align: pw.TextAlign.center, size: v.isAttached ? (6.5) : (8), color: v.isOffRoad ? PdfColors.red : null),
                           ]
                         )
                       ]
@@ -1105,7 +1152,7 @@ class DutyPdfGenerator {
                                 pw.Text('Phone Duty: $phoneDuty', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                                 pw.Text('Messenger: $messenger', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                                 pw.Text('Sentry Duty: $sentryDuty', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                                pw.Text('Watch Room/Wireless: $controlRoom', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                                pw.Text('Watch Room & Wireless: $controlRoom', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                                 pw.SizedBox(width: 2),
                               ]
                             )
@@ -1147,13 +1194,13 @@ class DutyPdfGenerator {
     );
   }
 
-  static pw.Widget _dataCell(String text, {pw.TextAlign align = pw.TextAlign.left, double size = 10}) {
+  static pw.Widget _dataCell(String text, {pw.TextAlign align = pw.TextAlign.left, double size = 10, PdfColor? color}) {
     return pw.Container(
       padding: pw.EdgeInsets.symmetric(vertical: _dynamicPadding, horizontal: 2),
       alignment: align == pw.TextAlign.center ? pw.Alignment.center : pw.Alignment.centerLeft,
       child: pw.Text(
         text,
-        style: pw.TextStyle(fontSize: size),
+        style: pw.TextStyle(fontSize: size, color: color ?? PdfColors.black),
         textAlign: align,
       ),
     );

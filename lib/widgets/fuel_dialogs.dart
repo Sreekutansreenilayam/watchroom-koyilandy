@@ -7,7 +7,6 @@ import '../providers/equipment_provider.dart';
 import '../providers/manpower_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/access_control.dart';
-import '../models/manpower_model.dart';
 
 class FuelDialogs {
   static void showAddLedgerDialog(BuildContext context) {
@@ -315,7 +314,7 @@ class FuelDialogs {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: selectedType,
+                    initialValue: selectedType,
                     dropdownColor: const Color(0xFF2C2C2C),
                     style: const TextStyle(color: Colors.white),
                     validator: (val) => val == null ? 'Required' : null,
@@ -442,7 +441,7 @@ class FuelDialogs {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: operatorController.text.isNotEmpty && operatorNames.contains(operatorController.text) ? operatorController.text : null,
+                    initialValue: operatorController.text.isNotEmpty && operatorNames.contains(operatorController.text) ? operatorController.text : null,
                     hint: const Text('Select Operator', style: TextStyle(color: Colors.white54)),
                     decoration: InputDecoration(
                       labelText: 'Operator / Issued By',

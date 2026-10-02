@@ -9,7 +9,6 @@ import '../providers/logbook_provider.dart';
 import '../providers/duty_provider.dart';
 import '../providers/manpower_provider.dart';
 import '../providers/fuel_provider.dart';
-import '../providers/vehicle_provider.dart';
 import '../models/duty_register_model.dart';
 import '../models/manpower_model.dart';
 import '../models/fuel_model.dart';
@@ -487,8 +486,8 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
           int eMins = _timeToDutyMinutes(eTime);
           if (eMins <= newDepMins) {
             prevEntry = e;
-          } else if (nextEntry == null) {
-            nextEntry = e;
+          } else {
+            nextEntry ??= e;
           }
         }
 
@@ -839,7 +838,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
         if (lastEntry != null && lastEntry.toPlace.isNotEmpty && lastEntry.toPlace != 'Routine Check / Charge') {
           _fromPlaceController.text = lastEntry.toPlace;
         } else {
-          _fromPlaceController.text = 'FRS മീഞ്ചന്ത';
+          _fromPlaceController.text = 'FRS കൊയിലാണ്ടി';
         }
       }
     } else if (type == 'Return Journey') {
@@ -848,7 +847,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
       } else {
         if (_fromPlaceController.text.isEmpty) _fromPlaceController.text = 'Station / Outpost';
       }
-      _toPlaceController.text = 'FRS മീഞ്ചന്ത';
+      _toPlaceController.text = 'FRS കൊയിലാണ്ടി';
     } else if (type == 'Fuel Drain/Decanting') {
       if (_remarksController.text.isEmpty) _remarksController.text = 'Fuel Drain / Decanting';
     }
@@ -1221,22 +1220,40 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
         }
         for (var v in register.vehicleAssignments) {
           addId(v.froD);
-          for (var id in v.khg.split(',')) addId(id);
-          for (var id in v.fro.split(',')) addId(id);
+          for (var id in v.khg.split(',')) {
+            addId(id);
+          }
+          for (var id in v.fro.split(',')) {
+            addId(id);
+          }
           addId(v.sfro);
         }
 
-        for (var id in register.specialDutyIds) addId(id);
-        for (var id in register.phoneDutyIds) addId(id);
-        for (var id in register.messengerIds) addId(id);
-        for (var id in register.sentryDutyIds) addId(id);
-        for (var id in register.controlRoomIds) addId(id);
-        for (var id in register.stationWriterIds) addId(id);
+        for (var id in register.specialDutyIds) {
+          addId(id);
+        }
+        for (var id in register.phoneDutyIds) {
+          addId(id);
+        }
+        for (var id in register.messengerIds) {
+          addId(id);
+        }
+        for (var id in register.sentryDutyIds) {
+          addId(id);
+        }
+        for (var id in register.controlRoomIds) {
+          addId(id);
+        }
+        for (var id in register.stationWriterIds) {
+          addId(id);
+        }
 
         for (var s in [...register.staffSummaries, ...register.homeGuardSummaries]) {
           final cat = s.category.toLowerCase();
           if (!cat.contains('off') && !cat.contains('leave') && !cat.contains('absent')) {
-            for (var id in s.personnelIds) addId(id);
+            for (var id in s.personnelIds) {
+              addId(id);
+            }
           }
         }
       }
@@ -1330,7 +1347,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
                         ? const Center(child: Text('No drivers found.', style: TextStyle(color: Colors.white54)))
                         : ListView.separated(
                             itemCount: filtered.length,
-                            separatorBuilder: (_, __) => const Divider(color: Colors.white10),
+                            separatorBuilder: (_, _) => const Divider(color: Colors.white10),
                             itemBuilder: (context, index) {
                               final driver = filtered[index];
                               final isSelected = _operatorController.text.contains(driver.idNumber) || _operatorController.text.contains(driver.name);
@@ -1539,7 +1556,7 @@ class _LogbookFormScreenState extends State<LogbookFormScreen> {
                 ],
                 // Type of Action Selection
                 DropdownButtonFormField<String>(
-                  value: _selectedActionType,
+                  initialValue: _selectedActionType,
                   hint: const Text('Select Type of Action', style: TextStyle(color: Colors.white60)),
                   dropdownColor: const Color(0xFF1E1E1E),
                   style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),

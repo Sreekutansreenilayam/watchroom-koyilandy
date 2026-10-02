@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/voucher_provider.dart';
-import '../models/voucher_model.dart';
 import 'voucher_form_screen.dart';
 import 'voucher_pdf_preview_screen.dart';
 

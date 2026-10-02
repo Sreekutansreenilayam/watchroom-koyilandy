@@ -1,6 +1,6 @@
 
 void main() {
-  int _getSeniorityRank(String idNumber) {
+  int getSeniorityRank(String idNumber) {
     final match = RegExp(r'\d+').firstMatch(idNumber);
     if (match != null) {
       String digits = match.group(0)!;
@@ -14,6 +14,6 @@ void main() {
   }
   
   List<String> ids = ['1051', '7083', '8262'];
-  ids.sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
+  ids.sort((a, b) => getSeniorityRank(a).compareTo(getSeniorityRank(b)));
   print(ids);
 }

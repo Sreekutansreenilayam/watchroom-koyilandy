@@ -36,8 +36,8 @@ class _IncidentReportScreenState extends State<IncidentReportScreen> {
       return;
     }
     try {
-      // Restrict search to ~45 km radius around Meenchanda (11.2189, 75.7925)
-      final url = Uri.parse('https://nominatim.openstreetmap.org/search?q=$query&format=json&addressdetails=1&countrycodes=in&viewbox=75.379,11.624,76.205,10.813&bounded=1&limit=10');
+      // Restrict search to ~45 km radius around Koyilandy (11.4398, 75.6961)
+      final url = Uri.parse('https://nominatim.openstreetmap.org/search?q=$query&format=json&addressdetails=1&countrycodes=in&viewbox=75.286,11.849,76.106,11.029&bounded=1&limit=10');
       final response = await http.get(url, headers: {'User-Agent': 'com.keralafiremda.watchroom'});
       if (response.statusCode == 200) {
         final List data = json.decode(response.body);

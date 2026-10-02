@@ -106,7 +106,7 @@ class SentryPdfGenerator {
     return pdf.save();
   }
 
-static pw.Widget _buildDailySlotsTable(
+  static pw.Widget _buildDailySlotsTable(
     SentryRegisterModel reg,
     List<Manpower> personnelList,
     List<SentryRegisterModel> allRegisters,
@@ -114,65 +114,41 @@ static pw.Widget _buildDailySlotsTable(
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
       columnWidths: const {
-        0: pw.FlexColumnWidth(2.5),
+        0: pw.FlexColumnWidth(1.0),
         1: pw.FlexColumnWidth(2.5),
-        2: pw.FlexColumnWidth(5.0),
-        3: pw.FlexColumnWidth(3.0),
-        4: pw.FlexColumnWidth(3.0),
+        2: pw.FlexColumnWidth(2.5),
+        3: pw.FlexColumnWidth(6.0),
       },
       children: [
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.grey300),
           children: [
+            _tableHeaderCell('Sl No'),
             _tableHeaderCell('Time Slot'),
             _tableHeaderCell('ID Number'),
             _tableHeaderCell('Personnel Name'),
-            _tableHeaderCell('Green Duty\n(01-03 & 03-05)'),
-            _tableHeaderCell('Red Duty\n(23-01 & 05-07)'),
           ],
         ),
-        ...reg.slots.map((s) {
+        ...List.generate(reg.slots.length, (index) {
+          final s = reg.slots[index];
           String name = '-';
           String idNumber = '-';
-          String lastGreen = '-';
-          String lastRed = '-';
 
           if (s.personnelId.isNotEmpty) {
             final p = personnelList.where((m) => m.idNumber == s.personnelId).firstOrNull;
             name = p != null ? p.name : s.personnelId;
             idNumber = s.personnelId;
-
-            // Find last green/red duty strictly BEFORE this register's date
-            List<SentryRegisterModel> sortedHistory = List.from(allRegisters)
-              ..sort((a, b) => b.date.compareTo(a.date));
-
-            for (var historyReg in sortedHistory) {
-              if (historyReg.date.isBefore(DateTime(reg.date.year, reg.date.month, reg.date.day))) {
-                for (int i = 0; i < historyReg.slots.length; i++) {
-                  if (historyReg.slots[i].personnelId == s.personnelId) {
-                    if ((i == 8 || i == 9) && lastGreen == '-') {
-                      lastGreen = DateFormat('dd/MM/yy').format(historyReg.date);
-                    }
-                    if ((i == 7 || i == 10) && lastRed == '-') {
-                      lastRed = DateFormat('dd/MM/yy').format(historyReg.date);
-                    }
-                  }
-                }
-                if (lastGreen != '-' && lastRed != '-') break;
-              }
-            }
           }
 
           return pw.TableRow(
             children: [
+              _tableDataCell('${index + 1}'),
               _tableDataCell(s.timeLabel),
               _tableDataCell(idNumber),
               _tableDataCell(name, alignLeft: true),
-              _tableDataCell(lastGreen, textColor: PdfColors.green),
-              _tableDataCell(lastRed, textColor: PdfColors.red),
             ],
           );
-        }).toList(),
+        }),
       ],
     );
   }

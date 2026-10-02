@@ -6,7 +6,6 @@ import '../models/sentry_register_model.dart';
 import '../providers/attendance_provider.dart';
 import '../providers/sentry_provider.dart';
 import '../providers/manpower_provider.dart';
-import '../models/attendance_model.dart';
 
 class SentryConfirmationDialog extends StatefulWidget {
   final SentryRegisterModel register;

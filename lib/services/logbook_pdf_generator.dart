@@ -66,12 +66,12 @@ class LogbookPdfGenerator {
       }
     }
 
-    String _formatDecimal(double val, {int maxDecimals = 3}) {
+    String formatDecimal(double val, {int maxDecimals = 3}) {
       if (val % 1 == 0) return val.toInt().toString();
       return val.toStringAsFixed(maxDecimals).replaceAll(RegExp(r'0*$'), '').replaceAll(RegExp(r'\.$'), '');
     }
 
-    String pumpKmStr = _formatDecimal(totalPumpKm);
+    String pumpKmStr = formatDecimal(totalPumpKm);
     String pumpSummaryLabel = '(2) തൻമാസം $pumpKmStr കി.മീ പമ്പ് പ്രവർത്തിച്ചതിന് ചെലവ്';
 
     double averageMileage = 0;
@@ -157,7 +157,7 @@ class LogbookPdfGenerator {
 
     String formatNumOrDash(double val) {
       if (val == 0) return '-';
-      return _formatDecimal(val);
+      return formatDecimal(val);
     }
 
     String formatFuel(double val) {
@@ -179,7 +179,7 @@ class LogbookPdfGenerator {
       final hasKm = effectiveKm > 0;
 
       if (hasDuration && hasKm) {
-        String kmStr = _formatDecimal(effectiveKm);
+        String kmStr = formatDecimal(effectiveKm);
         String durStr = e.pumpDuration.trim();
         if (durStr.contains(':')) {
           final parts = durStr.split(':');
@@ -223,7 +223,7 @@ class LogbookPdfGenerator {
         }
         return tableCell(durStr);
       } else if (hasKm) {
-        String kmStr = _formatDecimal(effectiveKm);
+        String kmStr = formatDecimal(effectiveKm);
         return tableCell('$kmStr Km');
       }
       return tableCell('-');
@@ -434,7 +434,7 @@ class LogbookPdfGenerator {
         ),
     );
 
-    Widget _wrapCellWithBorder(Widget cell, {bool isFirst = false}) {
+    Widget wrapCellWithBorder(Widget cell, {bool isFirst = false}) {
       return Container(
         decoration: BoxDecoration(
           border: Border(
@@ -457,28 +457,28 @@ class LogbookPdfGenerator {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(width: 55, child: _wrapCellWithBorder(cells[0], isFirst: true)),
-              SizedBox(width: 40, child: _wrapCellWithBorder(cells[1])),
-              SizedBox(width: 38, child: _wrapCellWithBorder(cells[2])),
-              SizedBox(width: 35, child: _wrapCellWithBorder(cells[3])),
-              SizedBox(width: 25, child: _wrapCellWithBorder(cells[4])),
-              SizedBox(width: 25, child: _wrapCellWithBorder(cells[5])),
-              SizedBox(width: 25, child: _wrapCellWithBorder(cells[6])),
-              SizedBox(width: 25, child: _wrapCellWithBorder(cells[7])),
-              SizedBox(width: 35, child: _wrapCellWithBorder(cells[8])),
-              Expanded(flex: 10, child: _wrapCellWithBorder(cells[9])),
-              Expanded(flex: 10, child: _wrapCellWithBorder(cells[10])),
-              SizedBox(width: 35, child: _wrapCellWithBorder(cells[11])),
-              SizedBox(width: 35, child: _wrapCellWithBorder(cells[12])),
-              SizedBox(width: 35, child: _wrapCellWithBorder(cells[13])),
-              SizedBox(width: 35, child: _wrapCellWithBorder(cells[14])),
-              SizedBox(width: 56, child: _wrapCellWithBorder(cells[15])),
-              SizedBox(width: 30, child: _wrapCellWithBorder(cells[16])),
-              SizedBox(width: 30, child: _wrapCellWithBorder(cells[17])),
-              SizedBox(width: 30, child: _wrapCellWithBorder(cells[18])),
-              Expanded(flex: 18, child: _wrapCellWithBorder(cells[19])),
-              SizedBox(width: 35, child: _wrapCellWithBorder(cells[20])),
-              Expanded(flex: 12, child: _wrapCellWithBorder(cells[21])),
+              SizedBox(width: 55, child: wrapCellWithBorder(cells[0], isFirst: true)),
+              SizedBox(width: 40, child: wrapCellWithBorder(cells[1])),
+              SizedBox(width: 38, child: wrapCellWithBorder(cells[2])),
+              SizedBox(width: 35, child: wrapCellWithBorder(cells[3])),
+              SizedBox(width: 25, child: wrapCellWithBorder(cells[4])),
+              SizedBox(width: 25, child: wrapCellWithBorder(cells[5])),
+              SizedBox(width: 25, child: wrapCellWithBorder(cells[6])),
+              SizedBox(width: 25, child: wrapCellWithBorder(cells[7])),
+              SizedBox(width: 35, child: wrapCellWithBorder(cells[8])),
+              Expanded(flex: 10, child: wrapCellWithBorder(cells[9])),
+              Expanded(flex: 10, child: wrapCellWithBorder(cells[10])),
+              SizedBox(width: 35, child: wrapCellWithBorder(cells[11])),
+              SizedBox(width: 35, child: wrapCellWithBorder(cells[12])),
+              SizedBox(width: 35, child: wrapCellWithBorder(cells[13])),
+              SizedBox(width: 35, child: wrapCellWithBorder(cells[14])),
+              SizedBox(width: 56, child: wrapCellWithBorder(cells[15])),
+              SizedBox(width: 30, child: wrapCellWithBorder(cells[16])),
+              SizedBox(width: 30, child: wrapCellWithBorder(cells[17])),
+              SizedBox(width: 30, child: wrapCellWithBorder(cells[18])),
+              Expanded(flex: 18, child: wrapCellWithBorder(cells[19])),
+              SizedBox(width: 35, child: wrapCellWithBorder(cells[20])),
+              Expanded(flex: 12, child: wrapCellWithBorder(cells[21])),
             ],
           ),
         ),
@@ -612,7 +612,7 @@ class LogbookPdfGenerator {
       );
     }
 
-    String totalKmStr = _formatDecimal(totalKm);
+    String totalKmStr = formatDecimal(totalKm);
 
     Widget bottomSection = Container(
       width: 1059,
@@ -691,7 +691,7 @@ class LogbookPdfGenerator {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('ഡിവിഷൻ : കോഴിക്കോട്', style: TextStyle(fontSize: 12)),
-            const Text('സ്റ്റേഷൻ : മീഞ്ചന്ത', style: TextStyle(fontSize: 12)),
+            const Text('സ്റ്റേഷൻ : കൊയിലാണ്ടി', style: TextStyle(fontSize: 12)),
             Text('രജിസ്റ്റർ നമ്പർ : ${vehicle.regNumber}', style: const TextStyle(fontSize: 12)),
           ],
         ),

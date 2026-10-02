@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vehicle_provider.dart';
 import '../providers/incident_provider.dart';
@@ -418,7 +417,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                    
                                    String personnelText = personnelList.join('\n');
                                    if (va.isOffRoad) {
-                                       personnelText = 'OFF ROAD';
+                                       personnelText = 'OFF ROAD${personnelList.isNotEmpty ? '\n${personnelList.join('\n')}' : ''}';
                                    } else if (personnelList.isEmpty) {
                                        personnelText = 'No personnel assigned';
                                    }

@@ -560,7 +560,7 @@ class _ManpowerScreenState extends State<ManpowerScreen> {
                             for (var p in provider.personnelList) {
                               // Compare ID numbers (case-insensitive)
                               if (p.idNumber.toLowerCase() == inputId.toLowerCase() &&
-                                  (!isEditing || p.id != existingManpower!.id)) {
+                                  (!isEditing || p.id != existingManpower.id)) {
                                 isDuplicate = true;
                                 if (!p.isActive) {
                                   inPastList = true;
@@ -593,7 +593,7 @@ class _ManpowerScreenState extends State<ManpowerScreen> {
                             }
 
                             final manpower = Manpower(
-                              id: isEditing ? existingManpower!.id : DateTime.now().millisecondsSinceEpoch.toString(),
+                              id: isEditing ? existingManpower.id : DateTime.now().millisecondsSinceEpoch.toString(),
                               idNumber: inputId,
                               name: _nameController.text.trim(),
                               designation: _selectedDesignation!,
@@ -607,8 +607,8 @@ class _ManpowerScreenState extends State<ManpowerScreen> {
                             );
 
                             if (isEditing) {
-                              if (existingManpower!.idNumber != inputId) {
-                                _promptMigrationAndSave(context, existingManpower!.idNumber, inputId, manpower, provider);
+                              if (existingManpower.idNumber != inputId) {
+                                _promptMigrationAndSave(context, existingManpower.idNumber, inputId, manpower, provider);
                                 return;
                               } else {
                                 provider.updateManpower(manpower);

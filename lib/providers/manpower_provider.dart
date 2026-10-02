@@ -132,11 +132,24 @@ class ManpowerProvider with ChangeNotifier {
         }
         
         // Inside same rank and gender, sort by extracted ID number
-        int numA = _extractNumber(a.idNumber);
-        int numB = _extractNumber(b.idNumber);
+        int getSeniorityWeight(String id) {
+          final match = RegExp(r'\d+').firstMatch(id);
+          if (match == null) return 999999;
+          String digits = match.group(0)!;
+          int num = int.parse(digits);
+          
+          if (num < 100) return num + 200000; // 1 or 2 digit
+          if (num < 1000) return num + 100000; // 3 digit
+          if (digits.startsWith('1')) return num + 50000; // starts with 1
+          
+          return num;
+        }
         
-        if (numA != -1 && numB != -1 && numA != numB) {
-          return numA.compareTo(numB);
+        int weightA = getSeniorityWeight(a.idNumber);
+        int weightB = getSeniorityWeight(b.idNumber);
+        
+        if (weightA != weightB) {
+          return weightA.compareTo(weightB);
         }
         
         // Fallback

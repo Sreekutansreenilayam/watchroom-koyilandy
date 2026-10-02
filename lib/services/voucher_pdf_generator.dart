@@ -137,7 +137,7 @@ class VoucherPdfGenerator {
                               pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(item.remarks)),
                             ]
                           );
-                        }).toList(),
+                        }),
                         // Add some empty rows to make it look like a form if there are no items
                         if (voucher.items.isEmpty)
                            pw.TableRow(

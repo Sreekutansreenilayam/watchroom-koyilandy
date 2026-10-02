@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/fuel_provider.dart';
 import '../models/fuel_model.dart';
 import '../widgets/fuel_dialogs.dart';
-import '../services/fuel_pdf_service.dart';
 import 'fuel_pdf_preview_screen.dart';
 import '../services/access_control.dart';
 

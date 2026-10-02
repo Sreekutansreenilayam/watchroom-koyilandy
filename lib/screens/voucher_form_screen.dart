@@ -6,7 +6,6 @@ import '../providers/equipment_provider.dart';
 import '../providers/vehicle_provider.dart';
 import '../providers/manpower_provider.dart';
 import '../models/voucher_model.dart';
-import '../models/manpower_model.dart';
 import '../config/app_config.dart';
 
 class VoucherFormScreen extends StatefulWidget {
@@ -198,7 +197,7 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
               title: 'Voucher Info',
               children: [
                 DropdownButtonFormField<String>(
-                  value: _type,
+                  initialValue: _type,
                   decoration: const InputDecoration(labelText: 'Voucher Type'),
                   items: ['Temporary', 'Permanent'].map((String value) {
                     return DropdownMenuItem<String>(

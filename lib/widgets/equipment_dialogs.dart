@@ -500,7 +500,7 @@ class EquipmentDialogs {
                     const SizedBox(height: 12),
                     
                     DropdownButtonFormField<String>(
-                      value: selectedEquipmentId,
+                      initialValue: selectedEquipmentId,
                       dropdownColor: const Color(0xFF2C2C2C),
                       style: const TextStyle(color: Colors.white),
                       decoration: _inputDecoration('Select Equipment ID'),

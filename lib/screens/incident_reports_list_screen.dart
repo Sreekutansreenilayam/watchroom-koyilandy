@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/incident_report_provider.dart';
-import '../providers/manpower_provider.dart';
 import 'incident_report_form_screen.dart';
 import 'incident_report_pdf_preview_screen.dart';
 

@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/vehicle_provider.dart';
 import '../providers/equipment_provider.dart';
 import '../models/vehicle_model.dart';
-import '../models/equipment_model.dart';
 
 class UpdatesScreen extends StatefulWidget {
   const UpdatesScreen({super.key});

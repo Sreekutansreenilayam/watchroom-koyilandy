@@ -190,9 +190,9 @@ class _DutyHistoryScreenState extends State<DutyHistoryScreen> {
                       
                       bool isLatestSystemDuty = false;
                       if (latestMonthDutyDate != null && 
-                          latestDuty.date.year == latestMonthDutyDate!.year &&
-                          latestDuty.date.month == latestMonthDutyDate!.month &&
-                          latestDuty.date.day == latestMonthDutyDate!.day) {
+                          latestDuty.date.year == latestMonthDutyDate.year &&
+                          latestDuty.date.month == latestMonthDutyDate.month &&
+                          latestDuty.date.day == latestMonthDutyDate.day) {
                          isLatestSystemDuty = true;
                       }
 
@@ -259,9 +259,9 @@ class _DutyHistoryScreenState extends State<DutyHistoryScreen> {
 
                                  bool isThisRecordLatestSystemDuty = false;
                                  if (latestMonthDutyDate != null && 
-                                     record.date.year == latestMonthDutyDate!.year &&
-                                     record.date.month == latestMonthDutyDate!.month &&
-                                     record.date.day == latestMonthDutyDate!.day) {
+                                     record.date.year == latestMonthDutyDate.year &&
+                                     record.date.month == latestMonthDutyDate.month &&
+                                     record.date.day == latestMonthDutyDate.day) {
                                      isThisRecordLatestSystemDuty = true;
                                  }
 

@@ -109,7 +109,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        value: isAddingNewCategory ? '+ Add New' : (_categoryController.text.isEmpty ? null : _categoryController.text),
+                        initialValue: isAddingNewCategory ? '+ Add New' : (_categoryController.text.isEmpty ? null : _categoryController.text),
                         dropdownColor: const Color(0xFF2C2C2C),
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(labelText: 'Category', labelStyle: TextStyle(color: Colors.white70)),

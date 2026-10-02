@@ -8,8 +8,6 @@ import '../providers/incident_report_provider.dart';
 import '../providers/manpower_provider.dart';
 import '../providers/vehicle_provider.dart';
 import '../providers/duty_provider.dart';
-import '../models/manpower_model.dart';
-import '../providers/equipment_provider.dart';
 
 class IncidentReportFormScreen extends StatefulWidget {
   final IncidentReportModel? existingReport;
@@ -24,7 +22,7 @@ class _IncidentReportFormScreenState extends State<IncidentReportFormScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // General Info
-  final _stationCtrl = TextEditingController(text: 'മീഞ്ചന്ത');
+  final _stationCtrl = TextEditingController(text: 'കൊയിലാണ്ടി');
   final _locationCtrl = TextEditingController();
   String? _selectedOfficerInChargeId;
   final _reportNumberCtrl = TextEditingController();
@@ -233,7 +231,7 @@ class _IncidentReportFormScreenState extends State<IncidentReportFormScreen> {
       dateLeft = combine(_dateLeft!, _timeLeft);
     } else if (_dateLeft != null) {
       dateLeft = _dateLeft;
-    } else if (_date != null && _timeLeft != null) {
+    } else if (_timeLeft != null) {
       dateLeft = combine(_date, _timeLeft);
     }
 
@@ -340,7 +338,7 @@ class _IncidentReportFormScreenState extends State<IncidentReportFormScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: DropdownButtonFormField<String>(
-        value: selectedId,
+        initialValue: selectedId,
         decoration: InputDecoration(labelText: label, labelStyle: const TextStyle(color: Colors.white70), filled: true, fillColor: Colors.white.withOpacity(0.05), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
         dropdownColor: const Color(0xFF1E1E1E),
         items: manpowerList.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name, style: const TextStyle(color: Colors.white)))).toList(),
@@ -702,7 +700,7 @@ class _IncidentReportFormScreenState extends State<IncidentReportFormScreen> {
                   onPressed: () {
                     if (selectedVehicle == null) return;
                     final newVehicle = IncidentReportVehicleDetail(
-                      stationName: 'മീഞ്ചന്ത',
+                      stationName: 'കൊയിലാണ്ടി',
                       vehicleType: selectedVehicle!.type,
                       regNo: selectedVehicle!.regNumber,
                       timeOut: timeOut != null ? _formatTime24(timeOut!) : '',

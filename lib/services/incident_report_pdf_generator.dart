@@ -70,9 +70,30 @@ class IncidentReportPdfGenerator {
     String formatDate(DateTime? date) => date != null ? DateFormat('dd/MM/yyyy').format(date) : '';
     String formatTime(DateTime? date) => date != null ? DateFormat('HH.mm').format(date) : '';
     
+    String getFullDesignation(String shortDesig) {
+      switch (shortDesig.toUpperCase().trim()) {
+        case 'STO': return 'Station Officer';
+        case 'ASTO': return 'Assistant Station Officer';
+        case 'AFSO': return 'Assistant Fire Station Officer';
+        case 'SFRO': return 'Senior Fire & Rescue Officer';
+        case 'SFRO (M)': return 'Senior Fire & Rescue Officer (Mechanic)';
+        case 'FRO': return 'Fire & Rescue Officer';
+        case 'FRO (D)': return 'Fire & Rescue Officer (Driver)';
+        case 'KHG': return 'Home Guard';
+        case 'HG': return 'Home Guard';
+        default: return shortDesig;
+      }
+    }
+
     String getOfficerName(String id) {
       final p = personnelList.where((p) => p.id == id).firstOrNull;
-      return p != null ? '${p.designation} ${p.name}' : '';
+      if (p != null) {
+        String fullDesig = getFullDesignation(p.designation);
+        String idNumOnly = p.idNumber.replaceAll(RegExp(r'[^0-9]'), '');
+        String idStr = idNumOnly.isNotEmpty ? '-$idNumOnly' : '';
+        return '$fullDesig$idStr ${p.name}';
+      }
+      return '';
     }
 
     Widget tableCell(String text, {bool isHeader = false}) {
@@ -152,7 +173,7 @@ class IncidentReportPdfGenerator {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('സ്ഥലം : ${report.station}', style: const TextStyle(fontSize: 14)),
+                const Text('സ്ഥലം : കൊയിലാണ്ടി', style: TextStyle(fontSize: 14)),
                 Text('സംഭവ തീയതി: ${formatDate(report.date)}', style: const TextStyle(fontSize: 14)),
               ],
             ),
@@ -381,7 +402,7 @@ class IncidentReportPdfGenerator {
                 ),
                 ...report.vehicleDetails.map((v) => TableRow(
                   children: [
-                    tableCell(v.stationName),
+                    tableCell('കൊയിലാണ്ടി'),
                     tableCell(v.vehicleType),
                     tableCell(v.regNo),
                     tableCell(v.timeOut),

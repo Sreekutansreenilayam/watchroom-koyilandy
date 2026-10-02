@@ -25,7 +25,7 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // General Info
-  final _stationCtrl = TextEditingController(text: 'മീഞ്ചന്ത');
+  final _stationCtrl = TextEditingController(text: 'കൊയിലാണ്ടി');
   final _locationCtrl = TextEditingController();
   String? _selectedOfficerInChargeId;
   final _reportNumberCtrl = TextEditingController();
@@ -920,7 +920,7 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
                   onPressed: () {
                     if (selectedVehicle == null) return;
                     final newVehicle = FireReportVehicleDetail(
-                      stationName: 'മീഞ്ചന്ത',
+                      stationName: 'കൊയിലാണ്ടി',
                       vehicleType: selectedVehicle!.type,
                       regNo: selectedVehicle!.regNumber,
                       timeOut: timeOut != null ? _formatTime24(timeOut!) : '',

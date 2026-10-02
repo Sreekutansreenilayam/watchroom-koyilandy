@@ -44,7 +44,7 @@ class AccessControl {
     final manpowerList = context.read<ManpowerProvider>().personnelList;
     try {
       final person = manpowerList.firstWhere((p) => p.id == linkedPersonId);
-      return person.designation == 'SFRO';
+      return person.designation == 'SFRO' || person.designation == 'FRO';
     } catch (e) {
       return false;
     }
@@ -142,7 +142,7 @@ class AccessControl {
       final currentDesig = currentUser.designation.toUpperCase();
       if (currentDesig == 'STO' || currentDesig == 'ASTO') {
          final targetUser = manpowerList.firstWhere((p) => p.id == targetPersonId);
-         if (targetUser.designation.toUpperCase() == 'SFRO') {
+         if (targetUser.designation.toUpperCase() == 'SFRO' || targetUser.designation.toUpperCase() == 'FRO') {
             return true;
          }
       }
@@ -174,7 +174,7 @@ class AccessControl {
     Set<String> onDutySfroNumbers = {};
 
     for (var person in manpowerList) {
-      if (person.designation == 'SFRO') {
+      if (person.designation == 'SFRO' || person.designation == 'FRO') {
         for (var date in datesToCheck) {
           final yearMonth = "${date.year}-${date.month.toString().padLeft(2, '0')}";
           final attendanceData = attendanceProvider.attendanceMap[person.id];
@@ -196,9 +196,9 @@ class AccessControl {
     }
 
     if (onDutySfroNumbers.isEmpty) {
-      return "the On-Duty SFRO";
+      return "the On-Duty Officer (SFRO/FRO)";
     }
-    return "SFRO ${onDutySfroNumbers.join(', ')}";
+    return "Officer ${onDutySfroNumbers.join(', ')}";
   }
 
   static bool isDateLocked(BuildContext context, DateTime date) {

@@ -21,7 +21,7 @@ class RegistersRecordsScreen extends StatelessWidget {
               title: const Text('Select Hose', style: TextStyle(color: Colors.white)),
               backgroundColor: const Color(0xFF1E1E1E),
               content: DropdownButtonFormField<String>(
-                value: selectedHose,
+                initialValue: selectedHose,
                 dropdownColor: const Color(0xFF2C2C2C),
                 decoration: const InputDecoration(
                   labelText: 'Hose',

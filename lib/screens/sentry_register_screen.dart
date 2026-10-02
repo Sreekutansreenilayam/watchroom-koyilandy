@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/sentry_register_model.dart';
 import '../providers/sentry_provider.dart';
 import '../providers/manpower_provider.dart';
@@ -448,12 +447,8 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
     DateTime currentMidnight = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
 
     for (var p in eligible) {
-      int daysSinceLastRed = 99999;
-      int daysSinceLastGreen = 99999;
       int daysSinceLastDuty = 99999;
       int lastSlot = -1;
-      int lastRedSlot = -1;
-      int lastGreenSlot = -1;
       int dutiesSinceSpare = 0;
       bool foundSpare = false;
       bool wasSpareYesterday = false;
@@ -463,15 +458,13 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
       for (var reg in allRegsSorted) {
         DateTime regMidnight = DateTime(reg.date.year, reg.date.month, reg.date.day);
         if (regMidnight.isBefore(currentMidnight)) {
-          bool didRedToday = false;
-          bool didGreenToday = false;
           int lastDutySlotToday = -1;
+          int firstDutySlotToday = -1;
 
           for (int idx = 0; idx < reg.slots.length; idx++) {
             if (didPersonGetCreditForSlot(reg, idx, p.idNumber)) {
+              if (firstDutySlotToday == -1) firstDutySlotToday = idx;
               lastDutySlotToday = idx;
-              if (idx == 8 || idx == 9) didRedToday = true;
-              if (idx == 7 || idx == 10) didGreenToday = true;
             }
           }
 
@@ -500,27 +493,7 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
             int diff = currentMidnight.difference(regMidnight).inDays;
             if (diff < daysSinceLastDuty) {
                 daysSinceLastDuty = diff;
-                lastSlot = lastDutySlotToday;
-            }
-            if (didRedToday && diff < daysSinceLastRed) {
-              daysSinceLastRed = diff;
-              if (lastRedSlot == -1) {
-                if (didPersonGetCreditForSlot(reg, 8, p.idNumber)) {
-                  lastRedSlot = 8;
-                } else if (didPersonGetCreditForSlot(reg, 9, p.idNumber)) {
-                  lastRedSlot = 9;
-                }
-              }
-            }
-            if (didGreenToday && diff < daysSinceLastGreen) {
-              daysSinceLastGreen = diff;
-              if (lastGreenSlot == -1) {
-                if (didPersonGetCreditForSlot(reg, 7, p.idNumber)) {
-                  lastGreenSlot = 7;
-                } else if (didPersonGetCreditForSlot(reg, 10, p.idNumber)) {
-                  lastGreenSlot = 10;
-                }
-              }
+                lastSlot = firstDutySlotToday;
             }
           }
         }
@@ -552,7 +525,7 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
             regMidnight.year == currentMidnight.year && 
             regMidnight.month == currentMidnight.month) {
           int dSlot = getSlotForPerson(reg, p.idNumber);
-          if (dSlot == 8 || dSlot == 9) spareBalance++;
+          // 8 and 9 were used for spare balance accumulation before. Now just check if they are in spares.
           if (reg.spares.contains(p.idNumber)) {
             spareBalance--;
             if (spareBalance < 0) spareBalance = 0;
@@ -565,12 +538,8 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
 
       personStats[p.idNumber] = {
         'person': p,
-        'daysSinceLastRed': daysSinceLastRed,
-        'daysSinceLastGreen': daysSinceLastGreen,
         'daysSinceLastDuty': daysSinceLastDuty,
         'lastSlot': lastSlot,
-        'lastRedSlot': lastRedSlot,
-        'lastGreenSlot': lastGreenSlot,
         'wasSpareYesterday': wasSpareYesterday,
         'wasSpareLastDuty': wasSpareLastDuty,
         'dutiesSinceSpare': dutiesSinceSpare,
@@ -583,328 +552,100 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
       };
     }
 
-    double getSpareScore(String id) {
-      if (personStats[id]!['isXR']) return -100000.0;
+    List<Manpower> activeDutyList = List.from(eligible);
+    
+    // 1. Sort personnel by the new priorities
+    activeDutyList.sort((a, b) {
+      String idA = a.idNumber;
+      String idB = b.idNumber;
 
-      if (personStats[id]!['daysSinceLastDuty'] > 2) return -75000.0;
+      // Extreme priority for XR personnel
+      bool xrA = personStats[idA]!['isXR'];
+      bool xrB = personStats[idB]!['isXR'];
+      if (xrA && !xrB) return -1;
+      if (!xrA && xrB) return 1;
 
-      if (personStats[id]!['wasSpareYesterday'] ||
-          personStats[id]!['wasSpareLastDuty']) {
-        return -50000.0;
+      int daysA = personStats[idA]!['daysSinceLastDuty'];
+      int daysB = personStats[idB]!['daysSinceLastDuty'];
+      
+      // Priority 1: Absentees (days > 2)
+      bool isAbsenteeA = daysA > 2;
+      bool isAbsenteeB = daysB > 2;
+      if (isAbsenteeA && !isAbsenteeB) return -1;
+      if (!isAbsenteeA && isAbsenteeB) return 1;
+      if (isAbsenteeA && isAbsenteeB) {
+          if (daysA != daysB) return daysB.compareTo(daysA);
       }
 
-      int dbySlot = personStats[id]!['dbySlot'];
-      int ySlot = personStats[id]!['ySlot'];
+      // Priority 2: Was Spare Last Duty (prevents consecutive spares)
+      bool spareA = personStats[idA]!['wasSpareLastDuty'];
+      bool spareB = personStats[idB]!['wasSpareLastDuty'];
+      if (spareA && !spareB) return -1;
+      if (!spareA && spareB) return 1;
 
-      // 1st Priority: DBY Slot 8 or 9 (Seniority: 8 then 9)
-      if (dbySlot == 8) return 15000.0;
-      if (dbySlot == 9) return 14000.0;
+      // Priority 3: Regular vs Continuous (Days == 2 vs Days == 1)
+      if (daysA != daysB) return daysB.compareTo(daysA);
 
-      // 2nd Priority: Yesterday Slot 8 or 9 (Seniority: 8 then 9)
-      if (ySlot == 8) return 13000.0;
-      if (ySlot == 9) return 12000.0;
-
-      // 3rd Priority: Missed Spare (spareBalance)
-      int spareBalance = personStats[id]!['spareBalance'];
-      if (spareBalance > 0) return 10000.0 + (spareBalance * 100.0);
-
-      // 4th Priority: DBY Slot 7 or Yesterday Slot 7 (Seniority: DBY 7 then Y 7)
-      if (dbySlot == 7) return 7000.0;
-      if (ySlot == 7) return 6000.0;
-
-      // Check actual duties performed since last spare
-      int dutiesSinceSpare = personStats[id]!['dutiesSinceSpare'];
-      if (dutiesSinceSpare < 2) return -1000.0;
-      return dutiesSinceSpare.toDouble();
-    }
+      // Priority 4: Last day seniority (first slot of their last duty day) (Ascending)
+      int slotA = personStats[idA]!['lastSlot'];
+      int slotB = personStats[idB]!['lastSlot'];
+      if (slotA != slotB) return slotA.compareTo(slotB); 
+      
+      // Priority 5: General sort order
+      return a.sortOrder.compareTo(b.sortOrder);
+    });
 
     List<Manpower> sparesList = [];
-    List<Manpower> activeDutyList = List.from(eligible);
     if (activeDutyList.length > 12) {
-      activeDutyList.sort((a, b) {
-        double scoreA = getSpareScore(a.idNumber);
-        double scoreB = getSpareScore(b.idNumber);
-        if (scoreA != scoreB) return scoreB.compareTo(scoreA); // Descending score
-        
-        int redA = personStats[a.idNumber]!['daysSinceLastRed'];
-        int redB = personStats[b.idNumber]!['daysSinceLastRed'];
-        if (redA != redB) return redA.compareTo(redB); // Ascending (smaller = more recent)
-        
-        DateTime? dateA = personStats[a.idNumber]!['lastDutyDate'];
-        DateTime? dateB = personStats[b.idNumber]!['lastDutyDate'];
-        if (dateA != null && dateB != null) return dateB.compareTo(dateA);
-        if (dateA != null && dateB == null) return -1;
-        if (dateA == null && dateB != null) return 1;
-        return 0;
-      });
-      while (activeDutyList.length > 12) {
-        sparesList.add(activeDutyList.removeAt(0)); // Highest scorers are removed and made spares
-      }
+      sparesList = activeDutyList.sublist(12);
+      activeDutyList = activeDutyList.sublist(0, 12);
     }
 
     List<SentrySlot> newSlots = _timeLabels.map((t) => SentrySlot(timeLabel: t)).toList();
     Set<int> assignedSlots = {};
 
-    // PHASE 1: Assign Red Duties (slots 8, 9)
-    List<String> redEligible = activeDutyList.map((e) => e.idNumber).where((id) {
-        if (personStats[id]!['isXR']) return false;
-        
-        int daysSinceLastGreen = personStats[id]!['daysSinceLastGreen'];
-        int daysSinceLastRed = personStats[id]!['daysSinceLastRed'];
-        
-        if (daysSinceLastGreen <= 2) {
-            return false; // Excluded due to Green->Red cool-off
-        }
-        
-        return true;
-    }).toList();
-
-    redEligible.sort((a, b) {
-       int redA = personStats[a]!['daysSinceLastRed'];
-       int redB = personStats[b]!['daysSinceLastRed'];
-       if (redA != redB) return redB.compareTo(redA); // Descending
-       
-       int dutyA = personStats[a]!['daysSinceLastDuty'];
-       int dutyB = personStats[b]!['daysSinceLastDuty'];
-       if (dutyA != dutyB) return dutyB.compareTo(dutyA);
-       
-       return (personStats[a]!['person'] as Manpower).sortOrder.compareTo((personStats[b]!['person'] as Manpower).sortOrder);
-    });
-
-
-        if (redEligible.length >= 2) {
-            String p1 = redEligible[0];
-            String p2 = redEligible[1];
-            int p1Last = personStats[p1]!['lastRedSlot'];
-            int p2Last = personStats[p2]!['lastRedSlot'];
-            
-            print('P1: $p1 (daysSinceLastRed: ${personStats[p1]!['daysSinceLastRed']}, lastRedSlot: $p1Last)');
-            print('P2: $p2 (daysSinceLastRed: ${personStats[p2]!['daysSinceLastRed']}, lastRedSlot: $p2Last)');
-
-        
-        bool shouldSwap = false;
-        if (p2Last == 9) {
-            // P2 wants 8, so we swap to give P2 their preference
-            shouldSwap = true;
-        } else if (p2Last == -1 && p1Last == 8) {
-            // P2 has no preference, but P1 wants 9, so we swap
-            shouldSwap = true;
-        }
-
-        if (shouldSwap) {
-            String temp = p1; p1 = p2; p2 = temp;
-        }
-
-        newSlots[8] = SentrySlot(timeLabel: _timeLabels[8], personnelId: p1);
-        assignedSlots.add(8);
-        personStats[p1]!['assignedToday'] = 1;
-        
-        newSlots[9] = SentrySlot(timeLabel: _timeLabels[9], personnelId: p2);
-        assignedSlots.add(9);
-        personStats[p2]!['assignedToday'] = 1;
-    } else if (redEligible.length == 1) {
-        newSlots[8] = SentrySlot(timeLabel: _timeLabels[8], personnelId: redEligible[0]);
-        assignedSlots.add(8);
-        personStats[redEligible[0]]!['assignedToday'] = 1;
-    }
-
-    // PHASE 2: Assign Green Duties (slots 7, 10)
-    List<String> greenEligible = activeDutyList.map((e) => e.idNumber).where((id) {
-        if (personStats[id]!['isXR']) return false;
-        if (assignedSlots.contains(8) && newSlots[8].personnelId == id) return false;
-        if (assignedSlots.contains(9) && newSlots[9].personnelId == id) return false;
-        
-        int daysSinceLastRed = personStats[id]!['daysSinceLastRed'];
-        if (daysSinceLastRed <= 2) return false;
-        
-        return true;
-    }).toList();
-
-    greenEligible.sort((a, b) {
-       int greenA = personStats[a]!['daysSinceLastGreen'];
-       int greenB = personStats[b]!['daysSinceLastGreen'];
-       if (greenA != greenB) return greenB.compareTo(greenA); // Descending
-       
-       int dutyA = personStats[a]!['daysSinceLastDuty'];
-       int dutyB = personStats[b]!['daysSinceLastDuty'];
-       if (dutyA != dutyB) return dutyB.compareTo(dutyA);
-       
-       return (personStats[a]!['person'] as Manpower).sortOrder.compareTo((personStats[b]!['person'] as Manpower).sortOrder);
-    });
-
-    if (greenEligible.length >= 2) {
-        String p1 = greenEligible[0];
-        String p2 = greenEligible[1];
-        int p1Last = personStats[p1]!['lastGreenSlot'];
-        int p2Last = personStats[p2]!['lastGreenSlot'];
-        
-        bool shouldSwap = false;
-        if (p2Last == 10) {
-            // P2 wants 7, so we swap to give P2 their preference
-            shouldSwap = true;
-        } else if (p2Last == -1 && p1Last == 7) {
-            // P2 has no preference, but P1 wants 10, so we swap
-            shouldSwap = true;
-        }
-
-        if (shouldSwap) {
-            String temp = p1; p1 = p2; p2 = temp;
-        }
-
-        newSlots[7] = SentrySlot(timeLabel: _timeLabels[7], personnelId: p1);
-        assignedSlots.add(7);
-        personStats[p1]!['assignedToday'] = (personStats[p1]!['assignedToday'] as int) + 1;
-        
-        newSlots[10] = SentrySlot(timeLabel: _timeLabels[10], personnelId: p2);
-        assignedSlots.add(10);
-        personStats[p2]!['assignedToday'] = (personStats[p2]!['assignedToday'] as int) + 1;
-    } else if (greenEligible.length == 1) {
-        newSlots[7] = SentrySlot(timeLabel: _timeLabels[7], personnelId: greenEligible[0]);
-        assignedSlots.add(7);
-        personStats[greenEligible[0]]!['assignedToday'] = (personStats[greenEligible[0]]!['assignedToday'] as int) + 1;
-    }
-
-    // PHASE 3A: First Turn Normal Distribution
-    List<int> remainingSlots = [0, 1, 2, 3, 4, 5, 6, 11];
+    List<int> remainingSlots = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
     
-    int slotsToFill = 8;
-    for (int s in remainingSlots) {
-        if (assignedSlots.contains(s)) slotsToFill--;
-    }
-
-    // Determine how many people are eligible for black slots (they haven't been assigned Red/Green)
-    List<String> blackEligibleIds = activeDutyList.map((e) => e.idNumber).where((id) {
-        if (personStats[id]!['isXR']) return true; // XR can do black
-        int existingSlotToday = -1;
-        for (int s = 0; s < 12; s++) {
-            if (newSlots[s].personnelId == id) {
-                existingSlotToday = s;
-                break;
-            }
-        }
-        if (existingSlotToday >= 7 && existingSlotToday <= 10) return false;
-        return true;
-    }).toList();
-
-    int firstTurnSlotsToFill = blackEligibleIds.length;
-    if (firstTurnSlotsToFill > slotsToFill) firstTurnSlotsToFill = slotsToFill;
-    
-    int availablePeople = blackEligibleIds.length;
-    int primaryCount = availablePeople > 8 ? 8 : availablePeople;
-    List<int> primarySlots = remainingSlots.sublist(0, primaryCount);
-    
-    int filledInPhase3A = 0;
-
-    while (filledInPhase3A < firstTurnSlotsToFill) {
-      Map<String, dynamic>? bestPair;
-
-      for (var p in activeDutyList) {
-        String id = p.idNumber;
-        if (!blackEligibleIds.contains(id)) continue;
+    // Assign 1st turn to the top personnel
+    for (var p in activeDutyList) {
+      String id = p.idNumber;
+      
+      for (int i in remainingSlots) {
+        if (assignedSlots.contains(i)) continue;
         
-        // ONLY 1ST TURN ALLOWED IN PHASE 3A
-        if ((personStats[id]!['assignedToday'] as int) > 0) continue;
+        if (personStats[id]!['isXR'] && i > 3) continue;
 
-        for (int i in remainingSlots) {
-          if (assignedSlots.contains(i)) continue;
-          
-          if (personStats[id]!['isXR']) {
-             if (i > 3) continue; // XR can only do slots 0-3
-          }
+        bool hasConsecutive = false;
+        if (i > 0 && newSlots[i - 1].personnelId == id) hasConsecutive = true;
+        if (i < 11 && newSlots[i + 1].personnelId == id) hasConsecutive = true;
+        if (hasConsecutive) continue;
 
-          bool hasConsecutive = false;
-          if (i > 0 && newSlots[i - 1].personnelId == id) hasConsecutive = true;
-          if (i < 11 && newSlots[i + 1].personnelId == id) hasConsecutive = true;
-          if (hasConsecutive) continue;
-
-          int ySlot = personStats[id]!['ySlot'];
-          if (ySlot != -1) {
-             if (ySlot == 8 && i < 1) continue;
-             if (ySlot == 9 && i < 2) continue;
-             if (ySlot == 10 && i < 3) continue;
-             if (ySlot == 11 && i < 4) continue;
-          }
-
-          double score = 0.0;
-          
-          Map<int, int> slotFreqs = personStats[id]!['slotFreqs'];
-          int freq = slotFreqs[i] ?? 0;
-          score -= freq * 2000.0;
-          
-          if (personStats[id]!['isXR']) {
-              score += 1000000.0;
-          }
-          
-          int lastSlot = personStats[id]!['lastSlot'];
-          if (lastSlot != -1) {
-              if (lastSlot == i) score -= 100000.0;
-              int expectedSlot = (lastSlot + 1) % 12;
-              int diff = (i - expectedSlot).abs();
-              if (diff > 6) diff = 12 - diff;
-              score -= diff * 100.0;
-          }
-
-          int daysAbsent = personStats[id]!['daysSinceLastDuty'];
-          if (daysAbsent > 2 && daysAbsent < 99999) {
-              score += daysAbsent * (12 - i) * 10000.0;
-          }
-
-          if (primarySlots.contains(i)) {
-              score += 20000.0;
-          }
-
-          var currentPair = {
-            'person': p,
-            'slot': i,
-            'score': score,
-          };
-
-          if (bestPair == null) {
-            bestPair = currentPair;
-          } else {
-             int sCmp = (currentPair['score'] as double).compareTo(
-                bestPair['score'] as double,
-             );
-             if (sCmp > 0) {
-                bestPair = currentPair;
-             } else if (sCmp == 0) {
-                 int daysA = personStats[id]!['daysSinceLastDuty'];
-                 int daysB = personStats[bestPair['person'].idNumber]!['daysSinceLastDuty'];
-                 if (daysA > daysB) {
-                     bestPair = currentPair;
-                 } else if (daysA == daysB) {
-                     if (p.sortOrder < (bestPair['person'] as Manpower).sortOrder) {
-                         bestPair = currentPair;
-                     }
-                 }
-             }
-          }
+        int ySlot = personStats[id]!['ySlot'];
+        if (ySlot != -1) {
+           if (ySlot == 8 && i < 1) continue;
+           if (ySlot == 9 && i < 2) continue;
+           if (ySlot == 10 && i < 3) continue;
+           if (ySlot == 11 && i < 4) continue;
         }
-      }
 
-      if (bestPair != null) {
-        int slot = bestPair['slot'];
-        Manpower person = bestPair['person'];
-        String id = person.idNumber;
-
-        newSlots[slot] = SentrySlot(
-          timeLabel: _timeLabels[slot],
+        // Found the first valid slot for this person!
+        newSlots[i] = SentrySlot(
+          timeLabel: _timeLabels[i],
           personnelId: id,
         );
-        personStats[id]!['assignedToday'] = (personStats[id]!['assignedToday'] as int) + 1;
-        assignedSlots.add(slot);
-        filledInPhase3A++;
-      } else {
-        break; // No eligible person found
+        personStats[id]!['assignedToday'] = 1;
+        assignedSlots.add(i);
+        break; // Move to the next person
       }
     }
 
-    // PHASE 3B: Second Turn (Fixed Mapping for Shortages)
+    // Second Turn (Fixed Mapping for Shortages)
     List<int> emptyBlackSlots = remainingSlots.where((s) => !assignedSlots.contains(s)).toList();
-    if (emptyBlackSlots.isNotEmpty && blackEligibleIds.isNotEmpty) {
-       // Get personnel who got a black slot today, sorted by the slot they got (chronological)
+    if (emptyBlackSlots.isNotEmpty && activeDutyList.isNotEmpty) {
+       // Get personnel who got a slot today, sorted by the slot they got (chronological)
        List<Map<String, dynamic>> filledBlackPersonnel = [];
-       for (String id in blackEligibleIds) {
+       for (var p in activeDutyList) {
+           String id = p.idNumber;
            if (personStats[id]!['isXR']) continue; // XR strictly max 1 duty
            int existingSlot = -1;
            for (int s in remainingSlots) {
