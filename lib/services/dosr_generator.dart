@@ -80,7 +80,7 @@ class DosrGenerator {
     for (var p in allPersonnel) {
       final status = attMap[p.id]?.dailyStatus[day]?.toUpperCase() ?? '';
       
-      if (status == 'R' || status == 'D/R' || status == 'DR') {
+      if (status == 'R' || status == 'D/R' || status == 'DR' || status == 'ODR' || status == 'O/D/R') {
          if (isTrainee(p)) continue; // Exclude trainees from Batch Out
          final effDesig = effectiveDesignation(p);
          if (isBeach(p)) {
@@ -199,7 +199,7 @@ class DosrGenerator {
           continue;
        }
 
-       if (status.isEmpty || status == 'X' || status == 'R' || status == 'X/R') continue; // Not on leave
+       if (status.isEmpty || status == 'X' || status == 'R' || status == 'X/R' || status == 'DR' || status == 'D/R' || status == 'ODR' || status == 'O/D/R') continue; // Not on leave
 
        if (status == 'OFF') {
           if (isBeach(p)) {

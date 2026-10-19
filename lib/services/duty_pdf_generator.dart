@@ -98,6 +98,7 @@ class DutyPdfGenerator {
     // Calculate dynamic data
     List<String> offDutyIdNumbers = [];
     List<String> offDutyDrIdNumbers = [];
+    List<String> offDutyOdrIdNumbers = [];
     List<String> sfroIds = [];
     List<String> sfroMIds = [];
     List<String> froDIds = [];
@@ -114,12 +115,14 @@ class DutyPdfGenerator {
     // Station Training dynamic data
     List<String> trainingOffDutyIds = [];
     List<String> trainingOffDutyDrIds = [];
+    List<String> trainingOffDutyOdrIds = [];
     List<String> trainingOnDutyIds = [];
     List<String> trainingLeaveIds = [];
 
     // Home Guards dynamic data
     List<String> hgOffDutyIds = [];
     List<String> hgOffDutyDrIds = [];
+    List<String> hgOffDutyOdrIds = [];
     List<String> hgOnDutyIds = [];
     List<String> hgLeaveOdIds = [];
     List<String> hgSpecialDutyIds = [];
@@ -127,6 +130,7 @@ class DutyPdfGenerator {
     // Other Stations dynamic data
     Map<String, List<String>> otherStationsOffDutyIds = {};
     Map<String, List<String>> otherStationsOffDutyDrIds = {};
+    Map<String, List<String>> otherStationsOffDutyOdrIds = {};
     Map<String, List<String>> otherStationsOnDutyIds = {};
     Map<String, List<String>> otherStationsLeaveIds = {};
     Map<String, List<String>> otherStationsSpecialDutyIds = {};
@@ -154,8 +158,10 @@ class DutyPdfGenerator {
         if (isStationTraining) {
           if (status == 'R') {
             trainingOffDutyIds.add(person.idNumber);
-          } else if (status == 'DR') {
+          } else if (status == 'DR' || status == 'D/R') {
             trainingOffDutyDrIds.add(person.idNumber);
+          } else if (status == 'ODR' || status == 'O/D/R') {
+            trainingOffDutyOdrIds.add(person.idNumber);
           } else if (status == 'X' || status?.toUpperCase() == 'X/R' || status == null || status.isEmpty) {
             trainingOnDutyIds.add(person.idNumber);
           } else {
@@ -177,14 +183,17 @@ class DutyPdfGenerator {
           final station = person.currentStation;
           otherStationsOffDutyIds.putIfAbsent(station, () => []);
           otherStationsOffDutyDrIds.putIfAbsent(station, () => []);
+          otherStationsOffDutyOdrIds.putIfAbsent(station, () => []);
           otherStationsOnDutyIds.putIfAbsent(station, () => []);
           otherStationsLeaveIds.putIfAbsent(station, () => []);
           otherStationsSpecialDutyIds.putIfAbsent(station, () => []);
           
           if (status == 'R') {
             otherStationsOffDutyIds[station]!.add(person.idNumber);
-          } else if (status == 'DR') {
+          } else if (status == 'DR' || status == 'D/R') {
             otherStationsOffDutyDrIds[station]!.add(person.idNumber);
+          } else if (status == 'ODR' || status == 'O/D/R') {
+            otherStationsOffDutyOdrIds[station]!.add(person.idNumber);
           } else if (status == 'OD' || status == 'SD' || status == 'WA') {
             otherStationsSpecialDutyIds[station]!.add(person.idNumber);
           } else if (status == 'X' || status?.toUpperCase() == 'X/R' || status == null || status.isEmpty) {
@@ -199,8 +208,10 @@ class DutyPdfGenerator {
           if (person.designation == 'KHG') {
             if (status == 'R') {
               hgOffDutyIds.add(person.idNumber);
-            } else if (status == 'DR') {
+            } else if (status == 'DR' || status == 'D/R') {
               hgOffDutyDrIds.add(person.idNumber);
+            } else if (status == 'ODR' || status == 'O/D/R') {
+              hgOffDutyOdrIds.add(person.idNumber);
             } else if (status == 'X' || status?.toUpperCase() == 'X/R' || status == null || status.isEmpty) {
               hgOnDutyIds.add(person.idNumber);
             } else if (status == 'OD' || status == 'SD' || status == 'WA') {
@@ -211,8 +222,10 @@ class DutyPdfGenerator {
           } else {
             if (status == 'R') {
               offDutyIdNumbers.add(person.idNumber);
-            } else if (status == 'DR') {
+            } else if (status == 'DR' || status == 'D/R') {
               offDutyDrIdNumbers.add(person.idNumber);
+            } else if (status == 'ODR' || status == 'O/D/R') {
+              offDutyOdrIdNumbers.add(person.idNumber);
             } else if (status == 'OFF') {
               weeklyLeaveIds.add(person.idNumber);
             } else if (status == 'CL') {
@@ -302,17 +315,19 @@ class DutyPdfGenerator {
       return result.join(', ');
     }
 
-    String formatIdNumbersCombined(List<String> rIds, List<String> drIds) {
+    String formatIdNumbersCombined(List<String> rIds, List<String> drIds, [List<String> odrIds = const []]) {
       String rStr = formatIdNumbers(rIds);
       String drStr = formatIdNumbers(drIds);
-      if (rStr.isEmpty && drStr.isEmpty) return '';
-      if (rStr.isEmpty) return 'D/R- $drStr';
-      if (drStr.isEmpty) return rStr;
-      return '$rStr. D/R- $drStr';
+      String odrStr = formatIdNumbers(odrIds);
+      List<String> parts = [];
+      if (rStr.isNotEmpty) parts.add(rStr);
+      if (drStr.isNotEmpty) parts.add('D/R- $drStr');
+      if (odrStr.isNotEmpty) parts.add('ODR- $odrStr');
+      return parts.join('. ');
     }
 
-    final offDutyCountStr = (offDutyIdNumbers.length + offDutyDrIdNumbers.length) > 0 ? (offDutyIdNumbers.length + offDutyDrIdNumbers.length).toString() : '';
-    final offDutyDetailsStr = formatIdNumbersCombined(offDutyIdNumbers, offDutyDrIdNumbers);
+    final offDutyCountStr = (offDutyIdNumbers.length + offDutyDrIdNumbers.length + offDutyOdrIdNumbers.length) > 0 ? (offDutyIdNumbers.length + offDutyDrIdNumbers.length + offDutyOdrIdNumbers.length).toString() : '';
+    final offDutyDetailsStr = formatIdNumbersCombined(offDutyIdNumbers, offDutyDrIdNumbers, offDutyOdrIdNumbers);
     
     String extractOnlyNumbers(List<String> ids) {
       if (ids.isEmpty) return '';
@@ -354,8 +369,8 @@ class DutyPdfGenerator {
     final stationHeadCountStr = stationHeadIds.isNotEmpty ? stationHeadIds.length.toString() : '';
     final stationHeadDetailsStr = '';
 
-    final hgOffDutyCountStr = (hgOffDutyIds.length + hgOffDutyDrIds.length) > 0 ? (hgOffDutyIds.length + hgOffDutyDrIds.length).toString() : '';
-    final hgOffDutyDetailsStr = formatIdNumbersCombined(hgOffDutyIds, hgOffDutyDrIds);
+    final hgOffDutyCountStr = (hgOffDutyIds.length + hgOffDutyDrIds.length + hgOffDutyOdrIds.length) > 0 ? (hgOffDutyIds.length + hgOffDutyDrIds.length + hgOffDutyOdrIds.length).toString() : '';
+    final hgOffDutyDetailsStr = formatIdNumbersCombined(hgOffDutyIds, hgOffDutyDrIds, hgOffDutyOdrIds);
     final hgOnDutyCountStr = hgOnDutyIds.isNotEmpty ? hgOnDutyIds.length.toString() : '';
     final hgOnDutyDetailsStr = formatIdNumbers(hgOnDutyIds);
     final hgSpecialDutyCountStr = hgSpecialDutyIds.isNotEmpty ? hgSpecialDutyIds.length.toString() : '';
@@ -363,28 +378,29 @@ class DutyPdfGenerator {
     final hgLeaveOdCountStr = hgLeaveOdIds.isNotEmpty ? hgLeaveOdIds.length.toString() : '';
     final hgLeaveOdDetailsStr = formatIdNumbers(hgLeaveOdIds);
 
-    final trainingOffDutyCountStr = (trainingOffDutyIds.length + trainingOffDutyDrIds.length) > 0 ? (trainingOffDutyIds.length + trainingOffDutyDrIds.length).toString() : '';
-    final trainingOffDutyDetailsStr = formatIdNumbersCombined(trainingOffDutyIds, trainingOffDutyDrIds);
+    final trainingOffDutyCountStr = (trainingOffDutyIds.length + trainingOffDutyDrIds.length + trainingOffDutyOdrIds.length) > 0 ? (trainingOffDutyIds.length + trainingOffDutyDrIds.length + trainingOffDutyOdrIds.length).toString() : '';
+    final trainingOffDutyDetailsStr = formatIdNumbersCombined(trainingOffDutyIds, trainingOffDutyDrIds, trainingOffDutyOdrIds);
     final trainingOnDutyCountStr = trainingOnDutyIds.isNotEmpty ? trainingOnDutyIds.length.toString() : '';
     final trainingOnDutyDetailsStr = formatIdNumbers(trainingOnDutyIds);
     final trainingLeaveCountStr = trainingLeaveIds.isNotEmpty ? trainingLeaveIds.length.toString() : '';
     final trainingLeaveDetailsStr = formatIdNumbers(trainingLeaveIds);
-    final int trainingTotal = trainingOffDutyIds.length + trainingOffDutyDrIds.length + trainingOnDutyIds.length + trainingLeaveIds.length;
+    final int trainingTotal = trainingOffDutyIds.length + trainingOffDutyDrIds.length + trainingOffDutyOdrIds.length + trainingOnDutyIds.length + trainingLeaveIds.length;
     final trainingTotalStr = trainingTotal > 0 ? trainingTotal.toString() : '';
 
     Map<String, Map<String, String>> otherStationsData = {};
     for (String station in otherStationsOffDutyIds.keys) {
       final offIds = otherStationsOffDutyIds[station]!;
       final drIds = otherStationsOffDutyDrIds[station] ?? [];
+      final odrIds = otherStationsOffDutyOdrIds[station] ?? [];
       final onIds = otherStationsOnDutyIds[station]!;
       final leaveIds = otherStationsLeaveIds[station]!;
       final specialIds = otherStationsSpecialDutyIds[station]!;
 
-      final total = offIds.length + drIds.length + onIds.length + leaveIds.length + specialIds.length;
+      final total = offIds.length + drIds.length + odrIds.length + onIds.length + leaveIds.length + specialIds.length;
       
       otherStationsData[station] = {
-        'offCount': (offIds.length + drIds.length) > 0 ? (offIds.length + drIds.length).toString() : '',
-        'offDetails': formatIdNumbersCombined(offIds, drIds),
+        'offCount': (offIds.length + drIds.length + odrIds.length) > 0 ? (offIds.length + drIds.length + odrIds.length).toString() : '',
+        'offDetails': formatIdNumbersCombined(offIds, drIds, odrIds),
         'onCount': onIds.isNotEmpty ? onIds.length.toString() : '',
         'onDetails': formatIdNumbers(onIds),
         'leaveCount': leaveIds.isNotEmpty ? leaveIds.length.toString() : '',
@@ -405,7 +421,7 @@ class DutyPdfGenerator {
     final specialDutyDetailsStr = sdDetails;
 
     final int parsedVacancyCount = int.tryParse(register.vacancyCount.trim()) ?? 0;
-    final int stationStaffTotal = offDutyIdNumbers.length + offDutyDrIdNumbers.length +
+    final int stationStaffTotal = offDutyIdNumbers.length + offDutyDrIdNumbers.length + offDutyOdrIdNumbers.length +
         sfroIds.length + sfroMIds.length + froDIds.length + froIds.length +
         weeklyLeaveIds.length + casualLeaveIds.length + otherLeaveIds.length +
         medicalLeaveIds.length + outDutyIds.length + trainingIds.length +
@@ -413,7 +429,7 @@ class DutyPdfGenerator {
         subStationHeadIds.length + stationHeadIds.length + parsedVacancyCount;
     final stationStaffTotalStr = stationStaffTotal > 0 ? stationStaffTotal.toString() : '';
 
-    final int hgTotal = hgOffDutyIds.length + hgOffDutyDrIds.length + hgOnDutyIds.length + hgLeaveOdIds.length + hgSpecialDutyIds.length;
+    final int hgTotal = hgOffDutyIds.length + hgOffDutyDrIds.length + hgOffDutyOdrIds.length + hgOnDutyIds.length + hgLeaveOdIds.length + hgSpecialDutyIds.length;
     final hgTotalStr = hgTotal > 0 ? hgTotal.toString() : '';
 
     Map<String, pw.MemoryImage> otherStationImages = {};

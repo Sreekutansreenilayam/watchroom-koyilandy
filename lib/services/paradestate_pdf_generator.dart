@@ -89,7 +89,7 @@ class ParadestatePdfGenerator {
           hgLwp.add(p.idNumber);
         } else if (status == 'WA' || status == 'SD') {
           hgWa.add(p.idNumber);
-        } else if (status == 'R' || status == 'DR' || status == 'OFF') {
+        } else if (status == 'R' || status == 'DR' || status == 'D/R' || status == 'ODR' || status == 'O/D/R' || status == 'OFF') {
           hgOffDuty.add(p.idNumber);
         } else if (status.isEmpty || status == 'X' || status == 'P' || status == 'X/R') {
           hgOnDuty.add(p.idNumber);
@@ -153,9 +153,9 @@ class ParadestatePdfGenerator {
         stats[effRank]!['wa_sd'] = (stats[effRank]!['wa_sd'] ?? 0) + 1;
       } else if (['ML', 'A', 'AB', 'SL', 'LWP'].contains(status)) { // Added LWP for non-KHG just in case
         stats[effRank]!['sick_absent'] = (stats[effRank]!['sick_absent'] ?? 0) + 1;
-      } else if (['T', 'TRG'].contains(status) || (isTrainee(p) && status.isNotEmpty && !['X','P','OFF','R','DR','D/R'].contains(status))) {
+      } else if (['T', 'TRG'].contains(status) || (isTrainee(p) && status.isNotEmpty && !['X','P','OFF','R','DR','D/R','ODR','O/D/R'].contains(status))) {
         stats[effRank]!['training'] = (stats[effRank]!['training'] ?? 0) + 1;
-      } else if (['OD', 'O/D', 'DR', 'D/R'].contains(status)) {
+      } else if (['OD', 'O/D', 'DR', 'D/R', 'ODR', 'O/D/R'].contains(status)) {
         stats[effRank]!['od_dr'] = (stats[effRank]!['od_dr'] ?? 0) + 1;
       } else if (['BH', 'HP', 'RH', 'EL', 'HPL', 'PL', 'SPCL'].contains(status)) {
         stats[effRank]!['bh_pl'] = (stats[effRank]!['bh_pl'] ?? 0) + 1;
