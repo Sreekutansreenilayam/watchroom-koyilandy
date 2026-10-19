@@ -75,17 +75,17 @@ class DutyPdfGenerator {
     final pdf = pw.Document();
 
     int vehicleCount = register.vehicleAssignments.length;
-    if (vehicleCount <= 10) {
-      _dynamicPadding = 6.0;
-      _dynamicSummaryHeight = 17.0;
-      _fontScale = 1.3;
-    } else if (vehicleCount <= 14) {
+    if (vehicleCount <= 8) {
       _dynamicPadding = 4.0;
       _dynamicSummaryHeight = 15.0;
-      _fontScale = 1.15;
-    } else {
-      _dynamicPadding = 2.5;
+      _fontScale = 1.2;
+    } else if (vehicleCount <= 10) {
+      _dynamicPadding = 3.0;
       _dynamicSummaryHeight = 14.0;
+      _fontScale = 1.1;
+    } else {
+      _dynamicPadding = 1.8;
+      _dynamicSummaryHeight = 13.0;
       _fontScale = 1.0;
     }
 
@@ -314,14 +314,28 @@ class DutyPdfGenerator {
     final offDutyCountStr = (offDutyIdNumbers.length + offDutyDrIdNumbers.length) > 0 ? (offDutyIdNumbers.length + offDutyDrIdNumbers.length).toString() : '';
     final offDutyDetailsStr = formatIdNumbersCombined(offDutyIdNumbers, offDutyDrIdNumbers);
     
+    String extractOnlyNumbers(List<String> ids) {
+      if (ids.isEmpty) return '';
+      List<String> result = [];
+      for (String id in ids) {
+        final match = RegExp(r'\d+').firstMatch(id);
+        if (match != null) {
+          result.add(match.group(0)!);
+        } else {
+          result.add(id);
+        }
+      }
+      return result.join(', ');
+    }
+
     final sfroCountStr = sfroIds.isNotEmpty ? sfroIds.length.toString() : '';
-    final sfroDetailsStr = formatIdNumbers(sfroIds);
+    final sfroDetailsStr = extractOnlyNumbers(sfroIds);
     final sfroMCountStr = sfroMIds.isNotEmpty ? sfroMIds.length.toString() : '';
-    final sfroMDetailsStr = formatIdNumbers(sfroMIds);
+    final sfroMDetailsStr = extractOnlyNumbers(sfroMIds);
     final froDCountStr = froDIds.isNotEmpty ? froDIds.length.toString() : '';
-    final froDDetailsStr = formatIdNumbers(froDIds);
+    final froDDetailsStr = extractOnlyNumbers(froDIds);
     final froCountStr = froIds.isNotEmpty ? froIds.length.toString() : '';
-    final froDetailsStr = formatIdNumbers(froIds);
+    final froDetailsStr = extractOnlyNumbers(froIds);
 
     final weeklyLeaveCountStr = weeklyLeaveIds.isNotEmpty ? weeklyLeaveIds.length.toString() : '';
     final weeklyLeaveDetailsStr = formatIdNumbers(weeklyLeaveIds);
@@ -439,7 +453,7 @@ class DutyPdfGenerator {
       pw.Page(
         pageTheme: pw.PageTheme(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.only(left: 75, right: 15, top: 15, bottom: 25),
+          margin: const pw.EdgeInsets.only(left: 40, right: 15, top: 10, bottom: 15),
           buildBackground: (pw.Context context) {
             return pw.FullPage(
               ignoreMargins: true,
@@ -463,7 +477,7 @@ class DutyPdfGenerator {
           return pw.FittedBox(
             fit: pw.BoxFit.scaleDown,
             child: pw.Container(
-              width: PdfPageFormat.a4.width - 45 - 25,
+              width: PdfPageFormat.a4.width - 40 - 15,
               child: pw.Column(
                 children: [
                   _buildHeader(register, texts),
@@ -936,28 +950,28 @@ class DutyPdfGenerator {
             child: pw.Row(
               crossAxisAlignment: pw.CrossAxisAlignment.stretch,
               children: [
-                pw.Expanded(flex: 7, child: _headerCell('SL\nNo.', size: 7, rightBorder: true)),
+                pw.Expanded(flex: 5, child: _headerCell('SL\nNo.', size: 7.5, rightBorder: true)),
                 
-                pw.Expanded(flex: 27, child: _headerCell('VEHICLE & EQUIPMENTS', size: 7, rightBorder: true)),
+                pw.Expanded(flex: 38, child: _headerCell('VEHICLE & EQUIPMENTS', size: 8.5, rightBorder: true)),
 
                 // POSTED PERSONNEL Group
                 pw.Expanded(
-                  flex: 7 + 24 + 7 + 7, // SFRO + FRO + KHG + FRO(D)
+                  flex: 6 + 22 + 6 + 6, // SFRO + FRO + KHG + FRO(D) = 40
                   child: pw.Container(
                     decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 1, color: PdfColors.black))),
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                       children: [
-                        _headerCell('POSTED PERSONNEL', size: 8),
+                        _headerCell('POSTED PERSONNEL', size: 8.5),
                         _hDivider(),
                         pw.Expanded(
                           child: pw.Row(
                             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                             children: [
-                              pw.Expanded(flex: 7, child: _headerCell(isSfroInCharge ? 'SFRO\n(I/C)' : 'SFRO', size: 7.5, rightBorder: true)),
-                              pw.Expanded(flex: 24, child: _headerCell('FRO', size: 7.5, rightBorder: true)),
-                              pw.Expanded(flex: 7, child: _headerCell('KHG', size: 7.5, rightBorder: true)),
-                              pw.Expanded(flex: 7, child: _headerCell('FRO(D)', size: 6.5)),
+                              pw.Expanded(flex: 6, child: _headerCell(isSfroInCharge ? 'SFRO\n(I/C)' : 'SFRO', size: 7.5, rightBorder: true)),
+                              pw.Expanded(flex: 22, child: _headerCell('FRO', size: 7.5, rightBorder: true)),
+                              pw.Expanded(flex: 6, child: _headerCell('KHG', size: 7.5, rightBorder: true)),
+                              pw.Expanded(flex: 6, child: _headerCell('FRO(D)', size: 7.0)),
                             ],
                           ),
                         ),
@@ -968,20 +982,20 @@ class DutyPdfGenerator {
 
                 // CONDITION Group
                 pw.Expanded(
-                  flex: 9 + 9, // MORNING + EVENING
+                  flex: 8 + 8, // MORNING + EVENING = 16
                   child: pw.Container(
                     decoration: const pw.BoxDecoration(border: pw.Border(right: pw.BorderSide(width: 1, color: PdfColors.black))),
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                       children: [
-                        _headerCell('CONDITION OF VEHICLE\n& EQUIPMENT', size: 6.5),
+                        _headerCell('CONDITION OF VEHICLE\n& EQUIPMENT', size: 7.0),
                         _hDivider(),
                         pw.Expanded(
                           child: pw.Row(
                             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                             children: [
-                              pw.Expanded(flex: 9, child: _headerCell('MORNING\nROLLCALL', size: 7, rightBorder: true)),
-                              pw.Expanded(flex: 9, child: _headerCell('EVENING\nROLLCALL', size: 7)),
+                              pw.Expanded(flex: 8, child: _headerCell('MORNING\nROLLCALL', size: 7, rightBorder: true)),
+                              pw.Expanded(flex: 8, child: _headerCell('EVENING\nROLLCALL', size: 7)),
                             ],
                           ),
                         ),
@@ -990,7 +1004,7 @@ class DutyPdfGenerator {
                   ),
                 ),
 
-                pw.Expanded(flex: 9, child: _headerCell('Remarks', size: 8)),
+                pw.Expanded(flex: 8, child: _headerCell('Remarks', size: 8)),
               ],
             ),
           ),
@@ -1009,15 +1023,15 @@ class DutyPdfGenerator {
                         horizontalInside: pw.BorderSide(width: 1, color: PdfColors.black),
                       ),
                       columnWidths: {
-                        0: const pw.FlexColumnWidth(7),
-                        1: const pw.FlexColumnWidth(27),
-                        2: const pw.FlexColumnWidth(7),
-                        3: const pw.FlexColumnWidth(24),
-                        4: const pw.FlexColumnWidth(7),
-                        5: const pw.FlexColumnWidth(7),
-                        6: const pw.FlexColumnWidth(9),
-                        7: const pw.FlexColumnWidth(9),
-                        8: const pw.FlexColumnWidth(9),
+                        0: const pw.FlexColumnWidth(5),
+                        1: const pw.FlexColumnWidth(38),
+                        2: const pw.FlexColumnWidth(6),
+                        3: const pw.FlexColumnWidth(22),
+                        4: const pw.FlexColumnWidth(6),
+                        5: const pw.FlexColumnWidth(6),
+                        6: const pw.FlexColumnWidth(8),
+                        7: const pw.FlexColumnWidth(8),
+                        8: const pw.FlexColumnWidth(8),
                       },
                       children: List.from(currentNormalRows),
                     )
@@ -1029,14 +1043,59 @@ class DutyPdfGenerator {
               List<DutyVehicleAssignment> vehiclesToRender = List.from(register.vehicleAssignments);
               if (AppConfig.isKoyilandy) {
                 vehiclesToRender.removeWhere((v) => v.vehicleName == 'Blower' || v.vehicleName == 'Torch set');
-                if (!vehiclesToRender.any((v) => v.vehicleName.toUpperCase().contains('TORCH'))) {
-                  vehiclesToRender.add(DutyVehicleAssignment(
-                    vehicleName: 'Torch',
-                    seniority: vehiclesToRender.length + 1,
-                    isOffRoad: false,
-                  ));
+                
+                void ensureItem(String name) {
+                  if (!vehiclesToRender.any((v) => v.vehicleName.toUpperCase().contains(name.toUpperCase()) || name.toUpperCase().contains(v.vehicleName.toUpperCase()))) {
+                    vehiclesToRender.add(DutyVehicleAssignment(
+                      vehicleName: name,
+                      seniority: vehiclesToRender.length + 1,
+                      isOffRoad: false,
+                    ));
+                  }
                 }
-                vehiclesToRender.sort((a, b) => a.seniority.compareTo(b.seniority));
+                ensureItem('Aska, Portable Pump, Chainsaw');
+                ensureItem('Outboard Engine, Chainsaw, Hydraulic Equipment, Honda Generator, Dinghy & Accessories');
+                ensureItem('SCUBA');
+                ensureItem('Torch');
+
+                final kOrder = [
+                  'MTU KL01CU9874',
+                  'MTU KL01BZ7112',
+                  'WATER MIST KL01CC6015',
+                  'AMBULANCE KL01CK792',
+                  'BULLET KL01BB7142',
+                  'MUV KL01DK2865',
+                  'MNI MTU KL01BB2997',
+                  'JEEP KL01BB3717',
+                  'ASKA, PORTABLE PUMP, CHAINSAW',
+                  'OUTBOARD ENGINE, CHAINSAW, HYDRAULIC EQUIPMENT, HONDA GENERATOR, DINGHY & ACCESSORIES',
+                  'SCUBA',
+                  'TORCH',
+                ];
+
+                vehiclesToRender.sort((a, b) {
+                  int idxA = kOrder.indexWhere((k) => a.vehicleName.toUpperCase().contains(k) || k.contains(a.vehicleName.toUpperCase()));
+                  int idxB = kOrder.indexWhere((k) => b.vehicleName.toUpperCase().contains(k) || k.contains(b.vehicleName.toUpperCase()));
+                  if (idxA == -1) idxA = 999;
+                  if (idxB == -1) idxB = 999;
+                  if (idxA != idxB) return idxA.compareTo(idxB);
+                  return a.seniority.compareTo(b.seniority);
+                });
+
+                for (int i = 0; i < vehiclesToRender.length; i++) {
+                  vehiclesToRender[i] = DutyVehicleAssignment(
+                    vehicleName: vehiclesToRender[i].vehicleName,
+                    seniority: i + 1,
+                    sfro: vehiclesToRender[i].sfro,
+                    fro: vehiclesToRender[i].fro,
+                    khg: vehiclesToRender[i].khg,
+                    froD: vehiclesToRender[i].froD,
+                    remarks: vehiclesToRender[i].remarks,
+                    isOffRoad: vehiclesToRender[i].isOffRoad,
+                    isAttached: vehiclesToRender[i].isAttached,
+                    manuallyEditedIds: vehiclesToRender[i].manuallyEditedIds,
+                  );
+                }
               }
 
               for (var i = 0; i < vehiclesToRender.length; i++) {
@@ -1061,6 +1120,8 @@ class DutyPdfGenerator {
                   displayVName = 'BA Set, Gas Detector';
                 }
 
+                final vNameSize = displayVName.length > 50 ? 8.0 : (displayVName.length > 25 ? 9.0 : 10.0);
+
                 if (v.isOffRoad || v.isAttached) {
                   flushNormalRows();
 
@@ -1074,19 +1135,19 @@ class DutyPdfGenerator {
                         verticalInside: pw.BorderSide(width: 1, color: PdfColors.black),
                       ),
                       columnWidths: {
-                        0: const pw.FlexColumnWidth(7),
-                        1: const pw.FlexColumnWidth(27),
-                        2: const pw.FlexColumnWidth(7),
-                        3: const pw.FlexColumnWidth(24),
-                        4: const pw.FlexColumnWidth(7),
-                        5: const pw.FlexColumnWidth(7),
-                        6: const pw.FlexColumnWidth(27), // 9 + 9 + 9
+                        0: const pw.FlexColumnWidth(5),
+                        1: const pw.FlexColumnWidth(38),
+                        2: const pw.FlexColumnWidth(6),
+                        3: const pw.FlexColumnWidth(22),
+                        4: const pw.FlexColumnWidth(6),
+                        5: const pw.FlexColumnWidth(6),
+                        6: const pw.FlexColumnWidth(24), // 8 + 8 + 8
                       },
                       children: [
                         pw.TableRow(
                           children: [
                             _dataCell(_toRoman(v.seniority, fallbackIndex: i + 1), align: pw.TextAlign.center),
-                            _dataCell(displayVName),
+                            _dataCell(displayVName, size: vNameSize),
                             _dataCell(_extractNumbers(v.sfro), align: pw.TextAlign.center),
                             _dataCell(_extractAndSortNumbers(v.fro, personnelList), align: pw.TextAlign.center),
                             _dataCell(_extractNumbers(v.khg), align: pw.TextAlign.center),
@@ -1102,7 +1163,7 @@ class DutyPdfGenerator {
                     pw.TableRow(
                       children: [
                         _dataCell(_toRoman(v.seniority, fallbackIndex: i + 1), align: pw.TextAlign.center),
-                        _dataCell(displayVName),
+                        _dataCell(displayVName, size: vNameSize),
                         _dataCell(_extractNumbers(v.sfro), align: pw.TextAlign.center),
                         _dataCell(_extractAndSortNumbers(v.fro, personnelList), align: pw.TextAlign.center),
                         _dataCell(_extractNumbers(v.khg), align: pw.TextAlign.center),
@@ -1135,10 +1196,10 @@ class DutyPdfGenerator {
                       verticalInside: pw.BorderSide(width: 1, color: PdfColors.black),
                     ),
                     columnWidths: {
-                      0: const pw.FlexColumnWidth(79),
-                      1: const pw.FlexColumnWidth(9),
-                      2: const pw.FlexColumnWidth(9),
-                      3: const pw.FlexColumnWidth(9),
+                      0: const pw.FlexColumnWidth(83), // 5 + 38 + 40
+                      1: const pw.FlexColumnWidth(8),
+                      2: const pw.FlexColumnWidth(8),
+                      3: const pw.FlexColumnWidth(8),
                     },
                     children: [
                       pw.TableRow(

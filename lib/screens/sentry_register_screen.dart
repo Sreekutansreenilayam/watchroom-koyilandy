@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/sentry_register_model.dart';
+import '../providers/duty_provider.dart';
 import '../providers/sentry_provider.dart';
 import '../providers/manpower_provider.dart';
 import '../providers/attendance_provider.dart';
@@ -361,8 +362,46 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
       );
     }
 
+    final allOnDutyToday = manProvider.getActivePersonnelForDate(_selectedDate).where((p) {
+      final att = attProvider.attendanceMap[p.id];
+      final status = att?.dailyStatus[_selectedDate.day];
+      return (status == 'X' || status == null || status.isEmpty || status.toUpperCase() == 'X/R');
+    }).toList();
+
+    final hasOfficerOnDuty = allOnDutyToday.any((p) =>
+      ['STO', 'ASTO', 'SFRO', 'SFRO(M)', 'SFRO (M)'].contains(p.designation)
+    );
+
+    // If no officer is on duty, the senior-most FRO holds SFRO charge & Phone Duty and is exempted from Sentry
+    String? actingSfroId;
+    if (!hasOfficerOnDuty) {
+      final onDutyFros = allOnDutyToday.where((p) => p.designation == 'FRO').toList();
+      if (onDutyFros.isNotEmpty) {
+        onDutyFros.sort((a, b) {
+          if (a.sortOrder != b.sortOrder) return a.sortOrder.compareTo(b.sortOrder);
+          final matchA = RegExp(r'\d+').firstMatch(a.idNumber);
+          final matchB = RegExp(r'\d+').firstMatch(b.idNumber);
+          int numA = matchA != null ? int.parse(matchA.group(0)!) : 999999;
+          int numB = matchB != null ? int.parse(matchB.group(0)!) : 999999;
+          return numA.compareTo(numB);
+        });
+        actingSfroId = onDutyFros.first.idNumber;
+      }
+    }
+
+    final dutyProvider = context.read<DutyProvider>();
+    final todayDuty = dutyProvider.registers.where((r) =>
+      r.date.year == _selectedDate.year &&
+      r.date.month == _selectedDate.month &&
+      r.date.day == _selectedDate.day
+    ).firstOrNull;
+    final watchRoomFROId = todayDuty?.controlRoomIds.isNotEmpty == true ? todayDuty!.controlRoomIds.first : null;
+    final messengerId = todayDuty?.messengerIds.isNotEmpty == true ? todayDuty!.messengerIds.first : null;
+
     final eligible = manProvider.getActivePersonnelForDate(_selectedDate).where((p) {
       if (!['FRO', 'KHG', 'Trainees'].contains(p.designation)) return false;
+      // Senior FRO holding charge of SFRO is exempted from Sentry
+      if (actingSfroId != null && p.idNumber == actingSfroId) return false;
       if (_register!.exemptions.any((e) => e.personnelId == p.idNumber)) return false;
       if (sentryProvider.globalExemptions.any((e) => e.personnelId == p.idNumber)) return false;
 
@@ -493,7 +532,7 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
             int diff = currentMidnight.difference(regMidnight).inDays;
             if (diff < daysSinceLastDuty) {
                 daysSinceLastDuty = diff;
-                lastSlot = firstDutySlotToday;
+                lastSlot = lastDutySlotToday;
             }
           }
         }
@@ -559,6 +598,22 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
       String idA = a.idNumber;
       String idB = b.idNumber;
 
+      // Priority for Watch Room FRO so he is guaranteed a sentry slot
+      if (watchRoomFROId != null) {
+        bool isWRA = idA == watchRoomFROId;
+        bool isWRB = idB == watchRoomFROId;
+        if (isWRA && !isWRB) return -1;
+        if (!isWRA && isWRB) return 1;
+      }
+
+      // Priority for Messenger H/G so he is in active duty and gets slot 11
+      if (messengerId != null) {
+        bool isMsgA = idA == messengerId;
+        bool isMsgB = idB == messengerId;
+        if (isMsgA && !isMsgB) return -1;
+        if (!isMsgA && isMsgB) return 1;
+      }
+
       // Extreme priority for XR personnel
       bool xrA = personStats[idA]!['isXR'];
       bool xrB = personStats[idB]!['isXR'];
@@ -613,6 +668,14 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
       for (int i in remainingSlots) {
         if (assignedSlots.contains(i)) continue;
         
+        // Messenger is STRICTLY detailed to Slot 11 (07:00 - 09:00) only!
+        if (messengerId != null && id == messengerId && i != 11) continue;
+
+        // Slot 11 is reserved for Messenger if Messenger is in active duty list
+        if (messengerId != null && id != messengerId && i == 11 && activeDutyList.any((m) => m.idNumber == messengerId)) {
+          continue;
+        }
+
         if (personStats[id]!['isXR'] && i > 3) continue;
 
         bool hasConsecutive = false;
@@ -647,6 +710,7 @@ class _SentryRegisterScreenState extends State<SentryRegisterScreen> {
        for (var p in activeDutyList) {
            String id = p.idNumber;
            if (personStats[id]!['isXR']) continue; // XR strictly max 1 duty
+           if (messengerId != null && id == messengerId) continue; // Messenger strictly max 1 duty (Slot 11 only)
            int existingSlot = -1;
            for (int s in remainingSlots) {
                if (newSlots[s].personnelId == id) {

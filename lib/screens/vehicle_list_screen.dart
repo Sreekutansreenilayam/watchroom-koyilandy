@@ -196,6 +196,7 @@ class VehicleListScreen extends StatelessWidget {
     if (status == 'READY' || status == 'Available') return 'READY';
     if (status == 'OFF ROAD') return 'OFF ROAD';
     if (status == 'MAINTENANCE') return 'MAINTENANCE';
+    if (status == 'CONDEMNED') return 'CONDEMNED';
     return status;
   }
 

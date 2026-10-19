@@ -80,11 +80,16 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
   List<DutyVehicleAssignment> _getDefaultVehicles({DateTime? targetDate}) {
     final date = targetDate ?? _selectedDate;
     final isNewRule = !date.isBefore(DateTime(2026, 7, 23));
+    final isJeepCondemned = !date.isBefore(DateTime(2026, 10, 20));
     
     List<DutyVehicleAssignment> list = [];
     final vehicleProvider = context.read<VehicleProvider>();
     int seniority = 1;
     for (var v in vehicleProvider.vehicles) {
+      if (v.status.toUpperCase() == 'CONDEMNED') continue;
+      if (isJeepCondemned && (v.regNumber.contains('3717') || v.type.toUpperCase().contains('JEEP'))) {
+        continue;
+      }
       list.add(DutyVehicleAssignment(
         vehicleName: '${v.type} ${v.regNumber}'.trim(),
         seniority: seniority++,
@@ -101,7 +106,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
         'BULLET KL01BB7142',
         'MUV KL01DK2865',
         'MNI MTU KL01BB2997',
-        'JEEP KL01BB3717'
+        if (!isJeepCondemned) 'JEEP KL01BB3717'
       ];
       list.sort((a, b) {
         int indexA = kOrder.indexWhere((o) => a.vehicleName.contains(o));
@@ -117,6 +122,9 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
           isOffRoad: list[i].isOffRoad,
         );
       }
+      list.add(DutyVehicleAssignment(vehicleName: 'Aska, Portable Pump, Chainsaw', seniority: list.length + 1));
+      list.add(DutyVehicleAssignment(vehicleName: 'Outboard Engine, Chainsaw, Hydraulic Equipment, Honda Generator, Dinghy & Accessories', seniority: list.length + 1));
+      list.add(DutyVehicleAssignment(vehicleName: 'SCUBA', seniority: list.length + 1));
       list.add(DutyVehicleAssignment(vehicleName: 'Torch', seniority: list.length + 1));
     } else if (AppConfig.isMeenchanda) {
       list.addAll([
@@ -247,6 +255,11 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
         // Remove standalone Blower and Torch set since they are merged
         completeVehiclesList.removeWhere((v) => v.vehicleName == 'Blower' || v.vehicleName == 'Torch set');
 
+        // From 20-Oct-2026 onwards, JEEP KL01BB3717 is condemned and removed from station
+        if (!date.isBefore(DateTime(2026, 10, 20))) {
+          completeVehiclesList.removeWhere((v) => v.vehicleName.contains('KL01BB3717') || v.vehicleName.toUpperCase().contains('JEEP'));
+        }
+
         // Migrate old vehicle names
         for (int i = 0; i < completeVehiclesList.length; i++) {
           final vName = completeVehiclesList[i].vehicleName;
@@ -308,7 +321,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
           }
         }
 
-        final defaults = _getDefaultVehicles();
+        final defaults = _getDefaultVehicles(targetDate: date);
         for (var defaultV in defaults) {
           if (!completeVehiclesList.any((v) => v.vehicleName == defaultV.vehicleName)) {
             completeVehiclesList.add(defaultV);
@@ -380,7 +393,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
         _vacancyDetailsController.clear();
         _selectedShift = '24 Hrs';
         
-        _vehicles = _getDefaultVehicles();
+        _vehicles = _getDefaultVehicles(targetDate: date);
         _vehicleOffRoadStatus.clear();
         _vehicleAttachedStatus.clear();
         for (var v in _vehicles) {
@@ -1547,201 +1560,295 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
       _messengerIds.clear();
 
       // --- ASSIGN OTHER DUTIES (Phone, Watch Room, Messenger) ---
-      // We assign these first, and remove them from the pools so they don't get vehicles!
-      final sfroPoolForPhone = allSfro.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
-      if (sfroPoolForPhone.isNotEmpty) {
-         String picked = pickForDuty(sfroPoolForPhone, 'Phone Duty');
-         if (picked.isNotEmpty) _phoneDutyIds = [picked];
+      // 1. Phone Duty:
+      // Always detailed to the senior-most SFRO (SFROs are never on sentry duty).
+      // If NO SFRO is on duty, the senior-most FRO takes SFRO charge & Phone Duty.
+      if (allSfro.isNotEmpty) {
+         final sortedSfro = List<Manpower>.from(allSfro);
+         sortedSfro.sort((a, b) {
+           if (a.sortOrder != b.sortOrder) return a.sortOrder.compareTo(b.sortOrder);
+           return _getSeniorityRank(a.idNumber).compareTo(_getSeniorityRank(b.idNumber));
+         });
+         _phoneDutyIds = [sortedSfro.first.idNumber];
       } else {
-         // No SFRO available, detail senior most FRO
-         final froPoolForPhone = allFro.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
-         if (froPoolForPhone.isNotEmpty) {
-             froPoolForPhone.sort((a, b) {
+         final sortedFro = List<Manpower>.from(allFro);
+         if (sortedFro.isNotEmpty) {
+             sortedFro.sort((a, b) {
                  if (a.sortOrder != b.sortOrder) return a.sortOrder.compareTo(b.sortOrder);
                  return _getSeniorityRank(a.idNumber).compareTo(_getSeniorityRank(b.idNumber));
              });
-             _phoneDutyIds = [froPoolForPhone.first.idNumber];
+             _phoneDutyIds = [sortedFro.first.idNumber];
          }
       }
 
-      final froPoolForWatchRoom = allFro.where((p) => !_sentryDutyIds.contains(p.idNumber) && !_phoneDutyIds.contains(p.idNumber)).toList();
+      // 2. Watch Room / Wireless (Control Room):
+      // Additional assignment on top of normal duty! Picked from on-duty FROs (excluding acting SFRO).
+      final froPoolForWatchRoom = allFro.where((p) => !_phoneDutyIds.contains(p.idNumber)).toList();
       if (froPoolForWatchRoom.isNotEmpty) {
          String picked = pickForDuty(froPoolForWatchRoom, 'Watch Room/Wireless'); // This maps to controlRoom in DB
-         if (picked.isNotEmpty) _controlRoomIds = [picked];
+         if (picked.isNotEmpty) {
+           _controlRoomIds = [picked];
+           // Watch Room is an additional duty, reset penalty load so it does not affect vehicle assignment
+           if ((assignmentsToday[picked] ?? 0) > 0) {
+             assignmentsToday[picked] = assignmentsToday[picked]! - 1;
+           }
+         }
       }
 
-      final khgPoolForMessenger = allKhg.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
-      if (khgPoolForMessenger.isNotEmpty) {
-         String picked = pickForDuty(khgPoolForMessenger, 'Messenger');
-         if (picked.isNotEmpty) _messengerIds = [picked];
-      }
+      // 3. Messenger:
+      // (Selected by rotation from H/Gs posted to Bullet or Ambulance after vehicle assignment)
 
       // --- AVAILABLE POOLS FOR VEHICLES ---
-      final availableSFRO = allSfro.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList(); // SFRO on Phone Duty can still go on vehicles
-      final availableFRO = allFro.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
+      // SFRO on Phone Duty can still lead vehicles; SFRO never does sentry
+      final availableSFRO = List<Manpower>.from(allSfro);
+      
+      // All FROs are available for vehicles (including Watch Room and Sentry FROs).
+      // The only exception is if an FRO is holding charge of SFRO (on Phone Duty when no SFRO present).
+      final availableFRO = allFro.where((p) {
+        if (allSfro.isEmpty && _phoneDutyIds.contains(p.idNumber)) return false;
+        return true;
+      }).toList();
       final availableKHG = allKhg.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
       final availableFROD = allFroD.where((p) => !_sentryDutyIds.contains(p.idNumber)).toList();
 
-      // --- FRO(D) ASSIGNMENT ---
-      String driver9874 = pickForDuty(availableFROD, 'MTU KL01CU9874');
-      String driver7112 = pickForDuty(availableFROD, 'MTU KL01BZ7112');
-      
-      String driverMist = pickForDuty(availableFROD, 'WATER MIST');
-      String driverAmb = pickForDuty(availableFROD, 'AMBULANCE');
-      String driverMuv = pickForDuty(availableFROD, 'MUV');
-      String driverBullet = pickForDuty(availableFROD, 'BULLET');
-      
-      String getBalancedDriver(List<String> candidates) {
-         candidates = candidates.where((c) => c.isNotEmpty).toList();
-         if (candidates.isEmpty) return '';
-         candidates.sort((a, b) {
-            int loadA = assignmentsToday[a] ?? 0;
-            int loadB = assignmentsToday[b] ?? 0;
-            return loadA.compareTo(loadB);
-         });
-         String picked = candidates.first;
-         assignmentsToday[picked] = (assignmentsToday[picked] ?? 0) + 1;
-         return picked;
-      }
-      
-      if (driver7112.isEmpty) driver7112 = getBalancedDriver([driver9874]);
-      if (driverMist.isEmpty) driverMist = getBalancedDriver([driver9874]);
-      
-      // Dummies go specifically to 9874 and 7112 as requested
-      String driverJeep = getBalancedDriver([driver9874]); 
-      String driverMniMtu = getBalancedDriver([driver7112]);
+      // --- FRO(D) DRIVER ASSIGNMENT ---
+      String driver9874 = '';
+      String driver7112 = '';
+      String driverMist = '';
+      String driverAmb = '';
+      String driverMuv = '';
+      String driverBullet = '';
+      String driverMniMtu = '';
+      String driverJeep = ''; // Jeep is condemned
 
-      // MUV strictly with 7112
-      if (driverMuv.isEmpty) driverMuv = getBalancedDriver([driver7112]);
-      
-      // Ambulance cannot mix with 7112. So it balances between 9874 and Mist
-      if (driverAmb.isEmpty) driverAmb = getBalancedDriver([driver9874, driverMist]);
-      
-      // Bullet balances across all active drivers to even out the load
-      List<String> allActive = [driver9874, driver7112, driverMist].where((c) => c.isNotEmpty).toSet().toList();
-      if (driverBullet.isEmpty) driverBullet = getBalancedDriver(allActive.isEmpty ? [driver9874] : allActive);
+      List<Manpower> sortedDrivers = List.from(availableFROD);
+      sortedDrivers.sort((a, b) => _getRotatedSeniorityRank(a.idNumber).compareTo(_getRotatedSeniorityRank(b.idNumber)));
+      List<String> dList = sortedDrivers.map((p) => p.idNumber).toList();
 
-      // --- KHG ASSIGNMENT ---
-      List<String> khg9874 = [];
-      if (availableKHG.isNotEmpty) khg9874.add(pickForDuty(availableKHG, 'MTU KL01CU9874'));
-      List<String> khg7112 = [];
-      if (availableKHG.isNotEmpty) khg7112.add(pickForDuty(availableKHG, 'MTU KL01BZ7112'));
-      
-      List<String> khgMist = [];
-      if (availableKHG.isNotEmpty) khgMist.add(pickForDuty(availableKHG, 'WATER MIST'));
-      List<String> khgMuv = [];
-      if (availableKHG.isNotEmpty) khgMuv.add(pickForDuty(availableKHG, 'MUV'));
-      List<String> khgBullet = []; // Bullet never gets a fresh KHG
-      
-      List<String> khgAmb = [];
-      if (availableKHG.isNotEmpty) khgAmb.add(pickForDuty(availableKHG, 'AMBULANCE'));
-      if (availableKHG.isNotEmpty) khgAmb.add(pickForDuty(availableKHG, 'AMBULANCE'));
+      if (dList.length == 2) {
+        // I. 2 പേർ മാത്രമെങ്കിൽ:
+        // 1st MTU: Amb, Bullet, Mini MTU
+        // 2nd MTU: W/mist, MUV
+        driver9874 = dList[0];
+        driverAmb = dList[0];
+        driverBullet = dList[0];
+        driverMniMtu = dList[0];
 
-      // The 7th KHG goes to Bullet if available
-      if (availableKHG.isNotEmpty) {
-          khgBullet.add(pickForDuty(availableKHG, 'BULLET'));
-      }
+        driver7112 = dList[1];
+        driverMist = dList[1];
+        driverMuv = dList[1];
+      } else if (dList.length == 3) {
+        // II. 3 പേർ ആണെങ്കിൽ:
+        // 1: 1st, Amb, Bullet
+        // 2: 2nd, MUV
+        // 3: W/mist & Mini MTU
+        driver9874 = dList[0];
+        driverAmb = dList[0];
+        driverBullet = dList[0];
 
-      List<String> khgTorch = [];
-      if (availableKHG.isNotEmpty) {
-          khgTorch.add(pickForDuty(availableKHG, 'Torch'));
-      }
+        driver7112 = dList[1];
+        driverMuv = dList[1];
 
-      // Distribute any remaining KHGs (8th, 9th, etc.) as surplus
-      while (availableKHG.isNotEmpty) {
-          khg9874.add(pickForDuty(availableKHG, 'MTU KL01CU9874'));
-          if (availableKHG.isNotEmpty) khg7112.add(pickForDuty(availableKHG, 'MTU KL01BZ7112'));
-          if (availableKHG.isNotEmpty) khgMist.add(pickForDuty(availableKHG, 'WATER MIST'));
-          if (availableKHG.isNotEmpty) khgMuv.add(pickForDuty(availableKHG, 'MUV'));
+        driverMist = dList[2];
+        driverMniMtu = dList[2];
+      } else if (dList.length >= 4) {
+        // III. 4 പേർ ആണെങ്കിൽ:
+        // 1: 1st, Bullet
+        // 2: 2nd, MUV
+        // 3: Amb
+        // 4: W/mist & Mini MTU
+        driver9874 = dList[0];
+        driverBullet = dList[0];
+
+        driver7112 = dList[1];
+        driverMuv = dList[1];
+
+        driverAmb = dList[2];
+
+        driverMist = dList[3];
+        driverMniMtu = dList[3];
+      } else if (dList.length == 1) {
+        driver9874 = dList[0];
+        driver7112 = dList[0];
+        driverMist = dList[0];
+        driverAmb = dList[0];
+        driverMuv = dList[0];
+        driverBullet = dList[0];
+        driverMniMtu = dList[0];
       }
 
-      String getBalancedDriverList(List<List<String>> candidatesLists) {
-          List<String> candidates = candidatesLists.expand((l) => l).where((c) => c.isNotEmpty).toList();
-          if (candidates.isEmpty) return '';
-          candidates.sort((a, b) {
-            int loadA = assignmentsToday[a] ?? 0;
-            int loadB = assignmentsToday[b] ?? 0;
-            return loadA.compareTo(loadB);
-          });
-          String picked = candidates.first;
-          assignmentsToday[picked] = (assignmentsToday[picked] ?? 0) + 1;
-          return picked;
-      }
-
-      if (khg9874.isEmpty) {
-          if (khgAmb.isNotEmpty) khg9874.add(khgAmb[0]);
-      }
-      if (khg7112.isEmpty) { String p = getBalancedDriverList([khg9874]); if(p.isNotEmpty) khg7112.add(p); }
-      if (khgMist.isEmpty) { String p = getBalancedDriverList([khg9874]); if(p.isNotEmpty) khgMist.add(p); }
-      if (khgBullet.isEmpty) { String p = getBalancedDriverList([khg9874]); if(p.isNotEmpty) khgBullet.add(p); }
-       if (khgTorch.isEmpty) { String p = getBalancedDriverList([khg9874, khgMist]); if(p.isNotEmpty) khgTorch.add(p); }
-      if (khgMuv.isEmpty) { String p = getBalancedDriverList([khg7112]); if(p.isNotEmpty) khgMuv.add(p); }
-      while (khgAmb.length < 2) {
-          String picked = getBalancedDriverList([khg9874, khgMist, khgBullet]);
-          if (picked.isEmpty) break; // In case all are empty
-          if (!khgAmb.contains(picked)) {
-              khgAmb.add(picked);
-          } else {
-              // If the best picked is already in khgAmb, try to pick another one if possible
-              List<String> remaining = [khg9874, khgMist, khgBullet].expand((l) => l).where((c) => c.isNotEmpty && !khgAmb.contains(c)).toList();
-              if (remaining.isNotEmpty) {
-                  String altPicked = getBalancedDriver(remaining);
-                  if (altPicked.isNotEmpty) {
-                    khgAmb.add(altPicked);
-                  } else {
-                    break;
-                  }
-              } else {
-                  break; // No other unique KHG available
-              }
-          }
-      }
-
-      // --- FRO ASSIGNMENT ---
+      // --- FRO CREW ASSIGNMENT ---
       List<String> fro9874 = [];
       List<String> fro7112 = [];
       List<String> froMist = [];
       List<String> froMuv = [];
       List<String> froAmb = [];
-      
-      for (int i = 0; i < 3; i++) { if (availableFRO.isNotEmpty) fro9874.add(pickForDuty(availableFRO, 'MTU KL01CU9874')); }
-      for (int i = 0; i < 3; i++) { if (availableFRO.isNotEmpty) fro7112.add(pickForDuty(availableFRO, 'MTU KL01BZ7112')); }
-      
-      for (int i = 0; i < 3; i++) { if (availableFRO.isNotEmpty) froMist.add(pickForDuty(availableFRO, 'WATER MIST')); }
-      for (int i = 0; i < 3; i++) { if (availableFRO.isNotEmpty) froMuv.add(pickForDuty(availableFRO, 'MUV')); }
-      if (availableFRO.isNotEmpty) froAmb.add(pickForDuty(availableFRO, 'AMBULANCE'));
+      List<String> froBullet = [];
+      List<String> froMniMtu = [];
 
-      void fillFromFallback(List<String> target, int requiredCount, List<String> fallbackPool, {List<String>? avoidPool}) {
-          List<String> available = fallbackPool.where((p) => !target.contains(p) && (avoidPool == null || !avoidPool.contains(p))).toList();
-          
-          // Sort by current load (least assigned first) to balance perfectly
-          available.sort((a, b) {
-              int loadA = assignmentsToday[a] ?? 0;
-              int loadB = assignmentsToday[b] ?? 0;
-              if (loadA != loadB) return loadA.compareTo(loadB);
-              
-              int consA = _getConsecutive(a);
-              int consB = _getConsecutive(b);
-              if (consA != consB) return consB.compareTo(consA); // DESCENDING
-              
-              // If load and consecutive duties are same, sort by rotated seniority to break ties
-              return _getRotatedSeniorityRank(a).compareTo(_getRotatedSeniorityRank(b));
-          });
-          
-          for (var p in available) {
-              if (target.length >= requiredCount) break;
-              target.add(p);
-              assignmentsToday[p] = (assignmentsToday[p] ?? 0) + 1; // Update load!
+      List<Manpower> sortedFroPool = List.from(availableFRO);
+      sortedFroPool.sort((a, b) => _getRotatedSeniorityRank(a.idNumber).compareTo(_getRotatedSeniorityRank(b.idNumber)));
+      List<String> froIds = sortedFroPool.map((p) => p.idNumber).toList();
+
+      if (froIds.length <= 4) {
+        // I. 4 പേർ ആണെങ്കിൽ (Rotation-wise):
+        // a) 1st MTU & Mini MTU: 3 പേർ (same crew)
+        fro9874 = froIds.take(3).toList();
+        froMniMtu = List.from(fro9874);
+
+        // b) 2nd MTU & MUV: 4-ാമൻ + 1st MTU-വിലെ 2 പേർ (same crew, ആകെ 3)
+        String fourth = froIds.length >= 4 ? froIds[3] : '';
+        List<String> firstMtuTwo = fro9874.length >= 2 ? fro9874.sublist(fro9874.length - 2) : List.from(fro9874);
+        fro7112 = [if (fourth.isNotEmpty) fourth, ...firstMtuTwo].toSet().toList();
+        froMuv = List.from(fro7112);
+
+        // c) Water Mist: 1st MTU Sr. FRO (1 പേർ) + 2nd MTU Sr. FRO (1 പേർ)
+        List<String> srFro9874 = List.from(fro9874)..sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
+        List<String> srFro7112 = List.from(fro7112)..sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
+        String wMist1 = srFro9874.isNotEmpty ? srFro9874.first : '';
+        String wMist2 = srFro7112.firstWhere((id) => id != wMist1, orElse: () => (srFro7112.isNotEmpty ? srFro7112.first : ''));
+        froMist = [if (wMist1.isNotEmpty) wMist1, if (wMist2.isNotEmpty && wMist2 != wMist1) wMist2];
+
+        // d) Ambulance: 2nd MTU-ൽ ഉൾപ്പെടാത്ത FRO (1 പേർ)
+        String ambFro = fro9874.firstWhere((id) => !fro7112.contains(id), orElse: () => (froIds.isNotEmpty ? froIds.first : ''));
+        if (ambFro.isNotEmpty) froAmb = [ambFro];
+
+        // e) Bullet: No FRO (1 FRO(D) & 1 H/G only)
+        froBullet = [];
+      } else if (froIds.length == 5) {
+        // II. 5 പേർ ആണെങ്കിൽ (Rotation-wise):
+        // a) 1st MTU & Mini MTU: 3 പേർ (same crew)
+        fro9874 = froIds.take(3).toList();
+        froMniMtu = List.from(fro9874);
+
+        // b) 2nd MTU & MUV: 4-ാമൻ + 5-ാമൻ + 1st MTU-വിലെ Sr. FRO (same crew, ആകെ 3)
+        String fourth = froIds[3];
+        String fifth = froIds[4];
+        List<String> srFro9874 = List.from(fro9874)..sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
+        String firstSr = srFro9874.first;
+        fro7112 = [fourth, fifth, firstSr];
+        froMuv = List.from(fro7112);
+
+        // c) Water Mist: 1st MTU Sr. FRO (1) + 2nd MTU Sr. FRO (1)
+        List<String> srFro7112 = List.from(fro7112)..sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
+        String wMist1 = firstSr;
+        String wMist2 = srFro7112.firstWhere((id) => id != wMist1, orElse: () => (srFro7112.isNotEmpty ? srFro7112.first : ''));
+        froMist = [wMist1, if (wMist2.isNotEmpty && wMist2 != wMist1) wMist2];
+
+        // d) Ambulance: 2nd MTU-ൽ ഉൾപ്പെടാത്ത FRO (1 പേർ)
+        List<String> notIn7112 = fro9874.where((id) => !fro7112.contains(id)).toList();
+        String ambFro = notIn7112.isNotEmpty ? notIn7112.first : froIds.first;
+        froAmb = [ambFro];
+
+        // e) Bullet: No FRO (1 FRO(D) & 1 H/G only)
+        froBullet = [];
+      } else {
+        // 5-ൽ കൂടുതൽ പേർ ആണെങ്കിൽ:
+        fro9874 = froIds.take(3).toList();
+        froMniMtu = List.from(fro9874);
+
+        List<String> remaining = froIds.skip(3).toList();
+        fro7112 = remaining.take(3).toList();
+        if (fro7112.length < 3) {
+          for (var id in fro9874) {
+            if (fro7112.length >= 3) break;
+            if (!fro7112.contains(id)) fro7112.add(id);
           }
+        }
+        froMuv = List.from(fro7112);
+
+        List<String> srFro9874 = List.from(fro9874)..sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
+        List<String> srFro7112 = List.from(fro7112)..sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
+        String wMist1 = srFro9874.isNotEmpty ? srFro9874.first : '';
+        String wMist2 = srFro7112.firstWhere((id) => id != wMist1, orElse: () => (srFro7112.isNotEmpty ? srFro7112.first : ''));
+        froMist = [if (wMist1.isNotEmpty) wMist1, if (wMist2.isNotEmpty && wMist2 != wMist1) wMist2];
+
+        String ambFro = fro9874.firstWhere((id) => !fro7112.contains(id), orElse: () => froIds.first);
+        froAmb = [ambFro];
+        froBullet = [];
       }
 
-      if (froMist.length < 2) {
-          fillFromFallback(froMist, 1, fro9874);
-          if (froMist.length < 2) fillFromFallback(froMist, 2, fro7112);
+      // --- KHG (HOME GUARD) ASSIGNMENT ---
+      List<String> khg9874 = [];
+      List<String> khg7112 = [];
+      List<String> khgMist = [];
+      List<String> khgMuv = [];
+      List<String> khgAmb = [];
+      List<String> khgMniMtu = [];
+      List<String> khgBullet = [];
+      List<String> khgTorch = [];
+
+      List<Manpower> sortedKhgPool = List.from(availableKHG);
+      sortedKhgPool.sort((a, b) => _getRotatedSeniorityRank(a.idNumber).compareTo(_getRotatedSeniorityRank(b.idNumber)));
+      List<String> khgIds = sortedKhgPool.map((p) => p.idNumber).toList();
+
+      // 1. Single H/G each for 1st MTU, 2nd MTU, Water Mist, MUV
+      if (khgIds.isNotEmpty) khg9874.add(khgIds.removeAt(0));
+      if (khgIds.isNotEmpty) khg7112.add(khgIds.removeAt(0));
+      if (khgIds.isNotEmpty) khgMist.add(khgIds.removeAt(0));
+      if (khgIds.isNotEmpty) khgMuv.add(khgIds.removeAt(0));
+      if (khgMuv.isEmpty && khg7112.isNotEmpty) khgMuv.add(khg7112.first);
+
+      // 2. Mini MTU: 2 H/G
+      for (int i = 0; i < 2; i++) {
+        if (khgIds.isNotEmpty) {
+          khgMniMtu.add(khgIds.removeAt(0));
+        }
       }
-      fillFromFallback(fro7112, 3, fro9874); // 7112 can borrow from 9874 if shortage
-      fillFromFallback(froMuv, 3, fro7112); // MUV can take everyone from 7112
-      fillFromFallback(froAmb, 1, fro9874, avoidPool: fro7112); // Ambulance strictly from 9874, avoid 7112
+      if (khgMniMtu.isEmpty && khg9874.isNotEmpty) khgMniMtu.add(khg9874.first);
+      if (khgMniMtu.length < 2 && khgMist.isNotEmpty && !khgMniMtu.contains(khgMist.first)) khgMniMtu.add(khgMist.first);
+
+      // 3. Ambulance: 2 H/G (must NOT include 2nd MTU or MUV H/Gs!)
+      List<String> forbiddenForAmb = [...khg7112, ...khgMuv];
+      while (khgAmb.length < 2 && khgIds.isNotEmpty) {
+        String cand = khgIds.firstWhere((id) => !forbiddenForAmb.contains(id), orElse: () => '');
+        if (cand.isNotEmpty) {
+          khgAmb.add(cand);
+          khgIds.remove(cand);
+        } else {
+          break;
+        }
+      }
+      // If shortage, borrow from 9874, Mist, Mini MTU (strictly avoiding 7112 & MUV)
+      List<String> safeBorrowPool = [...khg9874, ...khgMist, ...khgMniMtu].where((id) => !forbiddenForAmb.contains(id)).toList();
+      for (var id in safeBorrowPool) {
+        if (khgAmb.length >= 2) break;
+        if (!khgAmb.contains(id)) khgAmb.add(id);
+      }
+
+      // 4. Bullet H/G
+      if (khgIds.isNotEmpty) {
+        khgBullet.add(khgIds.removeAt(0));
+      } else if (khgAmb.isNotEmpty) {
+        khgBullet.add(khgAmb.first);
+      } else if (khg9874.isNotEmpty) {
+        khgBullet.add(khg9874.first);
+      }
+
+      // 5. Surplus KHGs (if any remaining) distributed
+      while (khgIds.isNotEmpty) {
+        khg9874.add(khgIds.removeAt(0));
+        if (khgIds.isNotEmpty) khg7112.add(khgIds.removeAt(0));
+        if (khgIds.isNotEmpty) khgMist.add(khgIds.removeAt(0));
+      }
+
+      // 6. Torch: 1st MTU posting H/G
+      khgTorch = List.from(khg9874);
+
+      // 7. Messenger: Selected by rotation from H/Gs posted to Bullet or Ambulance
+      List<String> messengerCandidates = [...khgBullet, ...khgAmb].toSet().toList();
+      if (messengerCandidates.isNotEmpty) {
+        final messengerPool = allKhg.where((p) => messengerCandidates.contains(p.idNumber)).toList();
+        if (messengerPool.isNotEmpty) {
+          String picked = pickForDuty(messengerPool, 'Messenger');
+          if (picked.isNotEmpty) {
+            _messengerIds = [picked];
+            if ((assignmentsToday[picked] ?? 0) > 0) {
+              assignmentsToday[picked] = assignmentsToday[picked]! - 1;
+            }
+          }
+        }
+      }
 
       // --- SFRO ASSIGNMENT ---
       Map<String, String> sfroAssignments = {};
@@ -1750,24 +1857,70 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
          sfroAssignments['MTU KL01CU9874'] = sfroId;
          sfroAssignments['MUV KL01DK2865'] = sfroId;
          sfroAssignments['MTU KL01BZ7112'] = sfroId;
+         sfroAssignments['MNI MTU KL01BB2997'] = sfroId;
       } else if (availableSFRO.length > 1) {
          sfroAssignments['MTU KL01CU9874'] = pickForDuty(availableSFRO, 'MTU KL01CU9874');
          sfroAssignments['MUV KL01DK2865'] = pickForDuty(availableSFRO, 'MUV KL01DK2865');
          sfroAssignments['MTU KL01BZ7112'] = pickForDuty(availableSFRO, 'MTU KL01BZ7112');
+         sfroAssignments['MNI MTU KL01BB2997'] = sfroAssignments['MTU KL01CU9874']!;
          
          if (availableSFRO.length > 3) {
-             sfroAssignments['MNI MTU KL01BB2997'] = pickForDuty(availableSFRO, 'MNI MTU KL01BB2997');
              sfroAssignments['WATER MIST KL01CC6015'] = pickForDuty(availableSFRO, 'WATER MIST KL01CC6015');
          }
       }
 
-      // Write to controllers
       String formatIds(List<String> ids) {
           if (ids.isEmpty) return '';
           var uniqueIds = ids.where((id) => id.isNotEmpty).toSet().toList();
           uniqueIds.sort((a, b) => _getSeniorityRank(a).compareTo(_getSeniorityRank(b)));
           return uniqueIds.join(', ');
       }
+
+      // --- SCUBA CREW ASSIGNMENT ---
+      // Priority 1: FRO 7569 and FRO(D) 2855 (their original designations).
+      // - If both present: both posted (7569 in FRO, 2855 in FRO(D)).
+      // - If single person present: only the present person is posted (no sr. FRO added).
+      // - If neither present: 2 Senior FROs posted to FRO column.
+      final p7569List = allFro.where((p) => p.idNumber.contains('7569')).toList();
+      if (p7569List.isEmpty) {
+        p7569List.addAll(allFroD.where((p) => p.idNumber.contains('7569')));
+      }
+      final p2855List = allFroD.where((p) => p.idNumber.contains('2855')).toList();
+      if (p2855List.isEmpty) {
+        p2855List.addAll(allFro.where((p) => p.idNumber.contains('2855')));
+      }
+
+      String scubaFro = '';
+      String scubaFroD = '';
+
+      bool has7569 = p7569List.isNotEmpty;
+      bool has2855 = p2855List.isNotEmpty;
+
+      if (has7569 && has2855) {
+        scubaFro = p7569List.first.idNumber;
+        scubaFroD = p2855List.first.idNumber;
+      } else if (has7569 && !has2855) {
+        scubaFro = p7569List.first.idNumber;
+        scubaFroD = '';
+      } else if (!has7569 && has2855) {
+        scubaFro = '';
+        scubaFroD = p2855List.first.idNumber;
+      } else {
+        // Neither present: 2 Senior FROs posted to FRO column
+        List<Manpower> availableForScuba = allFro.where((p) => !_phoneDutyIds.contains(p.idNumber)).toList();
+        if (availableForScuba.isEmpty) availableForScuba = List.from(allFro);
+        
+        availableForScuba.sort((a, b) {
+          if (a.sortOrder != b.sortOrder) return a.sortOrder.compareTo(b.sortOrder);
+          return _getSeniorityRank(a.idNumber).compareTo(_getSeniorityRank(b.idNumber));
+        });
+        
+        List<String> top2FroIds = availableForScuba.take(2).map((p) => p.idNumber).toList();
+        scubaFro = formatIds(top2FroIds);
+        scubaFroD = '';
+      }
+
+      // Write to controllers
 
       for (var v in _vehicles) {
         final vName = v.vehicleName;
@@ -1798,15 +1951,25 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
         } else if (vName.contains('BULLET KL01BB7142')) {
            _froDControllers[vName]?.text = driverBullet;
            _khgControllers[vName]?.text = formatIds(khgBullet);
+           _froControllers[vName]?.text = formatIds(froBullet);
         } else if (vName.contains('JEEP KL01BB3717')) {
            _froDControllers[vName]?.text = driverJeep;
         } else if (vName.contains('MNI MTU KL01BB2997')) {
            _froDControllers[vName]?.text = driverMniMtu;
+           _khgControllers[vName]?.text = formatIds(khgMniMtu);
+           _froControllers[vName]?.text = formatIds(froMniMtu);
            if (sfroAssignments.containsKey('MNI MTU KL01BB2997')) _sfroControllers[vName]?.text = sfroAssignments['MNI MTU KL01BB2997']!;
-         } else if (vName.contains('Torch')) {
-            _khgControllers[vName]?.text = formatIds(khgTorch);
-         }
-       }
+        } else if (vName.contains('Aska, Portable Pump, Chainsaw')) {
+           _froDControllers[vName]?.text = driver9874;
+        } else if (vName.contains('Outboard Engine') || vName.contains('Hydraulic Equipment')) {
+           _froDControllers[vName]?.text = driver7112;
+        } else if (vName == 'SCUBA' || vName.contains('SCUBA')) {
+           _froControllers[vName]?.text = scubaFro;
+           _froDControllers[vName]?.text = scubaFroD;
+        } else if (vName.contains('Torch')) {
+           _khgControllers[vName]?.text = formatIds(khgTorch);
+        }
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vehicles & Duties Auto-assigned.'), backgroundColor: Colors.green),

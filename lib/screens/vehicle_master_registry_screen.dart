@@ -580,6 +580,8 @@ class _VehicleMasterRegistryScreenState extends State<VehicleMasterRegistryScree
                                       _status = 'OFF ROAD';
                                     } else if (_status == 'OFF ROAD') {
                                       _status = 'MAINTENANCE';
+                                    } else if (_status == 'MAINTENANCE') {
+                                      _status = 'CONDEMNED';
                                     } else {
                                       _status = 'READY';
                                     }
@@ -590,12 +592,20 @@ class _VehicleMasterRegistryScreenState extends State<VehicleMasterRegistryScree
                                   decoration: BoxDecoration(
                                     color: _status == 'READY'
                                         ? Colors.green.withOpacity(0.3)
-                                        : (_status == 'OFF ROAD' ? Colors.red.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
+                                        : (_status == 'OFF ROAD'
+                                            ? Colors.red.withOpacity(0.3)
+                                            : (_status == 'CONDEMNED'
+                                                ? Colors.grey.withOpacity(0.3)
+                                                : Colors.orange.withOpacity(0.3))),
                                     borderRadius: BorderRadius.circular(15),
                                     border: Border.all(
                                       color: _status == 'READY'
                                           ? Colors.greenAccent
-                                          : (_status == 'OFF ROAD' ? Colors.redAccent : Colors.orangeAccent),
+                                          : (_status == 'OFF ROAD'
+                                              ? Colors.redAccent
+                                              : (_status == 'CONDEMNED'
+                                                  ? Colors.grey
+                                                  : Colors.orangeAccent)),
                                     ),
                                   ),
                                   alignment: Alignment.center,

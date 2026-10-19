@@ -42,6 +42,18 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    applicationVariants.all {
+        val variant = this
+        outputs.all {
+            val outputImpl = this as? com.android.build.gradle.internal.api.ApkVariantOutputImpl
+            if (outputImpl != null) {
+                val abi = outputImpl.filters.find { it.filterType == "ABI" }?.identifier ?: ""
+                val abiSuffix = if (abi.isNotEmpty()) "_$abi" else ""
+                outputImpl.outputFileName = "Watchroom_Koyilandy_v${variant.versionName}${abiSuffix}.apk"
+            }
+        }
+    }
 }
 
 flutter {
