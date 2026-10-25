@@ -260,19 +260,13 @@ class DutyPdfGenerator {
       }
     }
     
-    bool isSfroInCharge = sfroIds.isEmpty && sfroMIds.isEmpty;
+    bool isSfroInCharge = sfroIds.isEmpty;
     if (isSfroInCharge && froIds.isNotEmpty && personnelList != null) {
       final presentFros = personnelList.where((p) => froIds.contains(p.idNumber)).toList();
       if (presentFros.isNotEmpty) {
         presentFros.sort((a, b) {
           if (a.sortOrder != b.sortOrder) return a.sortOrder.compareTo(b.sortOrder);
-          int rankA = 999999;
-          final matchA = RegExp(r'\d+').firstMatch(a.idNumber);
-          if (matchA != null) rankA = int.parse(matchA.group(0)!);
-          int rankB = 999999;
-          final matchB = RegExp(r'\d+').firstMatch(b.idNumber);
-          if (matchB != null) rankB = int.parse(matchB.group(0)!);
-          return rankA.compareTo(rankB);
+          return _getSeniorityRank(a.idNumber).compareTo(_getSeniorityRank(b.idNumber));
         });
         final actingSfro = presentFros.first;
         froIds.remove(actingSfro.idNumber);
@@ -344,7 +338,13 @@ class DutyPdfGenerator {
     }
 
     final sfroCountStr = sfroIds.isNotEmpty ? sfroIds.length.toString() : '';
-    final sfroDetailsStr = extractOnlyNumbers(sfroIds);
+    final String sfroDetailsStr;
+    if (isSfroInCharge) {
+      final rawNum = extractOnlyNumbers(sfroIds);
+      sfroDetailsStr = rawNum.isNotEmpty ? 'FRO-$rawNum' : '';
+    } else {
+      sfroDetailsStr = extractOnlyNumbers(sfroIds);
+    }
     final sfroMCountStr = sfroMIds.isNotEmpty ? sfroMIds.length.toString() : '';
     final sfroMDetailsStr = extractOnlyNumbers(sfroMIds);
     final froDCountStr = froDIds.isNotEmpty ? froDIds.length.toString() : '';
@@ -535,7 +535,12 @@ class DutyPdfGenerator {
                     register, 
                     personnelList,
                     phoneDuty: formatIdNumbers(register.phoneDutyIds),
-                    messenger: formatIdNumbers(register.messengerIds),
+                    messenger: (register.date.weekday == DateTime.sunday ||
+                            (register.date.weekday == DateTime.saturday &&
+                                register.date.day >= 8 &&
+                                register.date.day <= 14))
+                        ? ''
+                        : formatIdNumbers(register.messengerIds),
                     sentryDuty: formatIdNumbers(register.sentryDutyIds),
                     controlRoom: formatIdNumbers(register.controlRoomIds),
                     isSfroInCharge: isSfroInCharge,

@@ -170,7 +170,7 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
   void _loadExistingData(FireReportModel report) {
     _stationCtrl.text = report.station;
     _locationCtrl.text = report.location;
-    _selectedOfficerInChargeId = report.officerInChargeId;
+    _selectedOfficerInChargeId = report.officerInChargeId.isNotEmpty ? report.officerInChargeId : null;
     _reportNumberCtrl.text = report.reportNumber;
     _date = report.date;
 
@@ -188,7 +188,7 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
     _actualFireTime = report.actualFireTime != null ? TimeOfDay.fromDateTime(report.actualFireTime!) : null;
 
     _propertiesInvolvedCtrl.text = report.propertiesInvolved;
-    _typeOfFire = report.typeOfFire.isNotEmpty ? report.typeOfFire : 'ചെറുത്';
+    _typeOfFire = const ['ഗുരുതരം', 'മാധ്യമം', 'ചെറുത്'].contains(report.typeOfFire) ? report.typeOfFire : 'ചെറുത്';
     _extentOfFireCtrl.text = report.extentOfFire;
     _confirmedCauseCtrl.text = report.confirmedCause;
     _damageDescriptionCtrl.text = report.damageDescription;
@@ -198,7 +198,7 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
     _estBldgCtrl.text = report.estValueBuildingDamage.toInt().toString();
     _estContentsCtrl.text = report.estValueContentsDamage.toInt().toString();
 
-    _selectedAssessingOfficerId = report.assessingOfficerId;
+    _selectedAssessingOfficerId = report.assessingOfficerId.isNotEmpty ? report.assessingOfficerId : null;
     _assessmentDate = report.assessmentDate;
     _assessmentTime = report.assessmentDate != null ? TimeOfDay.fromDateTime(report.assessmentDate!) : null;
     _workingHoursCtrl.text = report.totalWorkingHours.toString();
@@ -326,6 +326,104 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
     );
   }
 
+  Widget _buildDistanceField(String label, TextEditingController controller) {
+    void insertPlus() {
+      final text = controller.text;
+      final selection = controller.selection;
+      if (selection.isValid && selection.start >= 0 && selection.end >= 0) {
+        final newText = text.replaceRange(selection.start, selection.end, '+');
+        controller.value = TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: selection.start + 1),
+        );
+      } else {
+        controller.text = '$text+';
+        controller.selection = TextSelection.collapsed(offset: controller.text.length);
+      }
+    }
+
+    void calculateAndInsertEquals() {
+      String text = controller.text.trim().replaceAll(',', '+');
+      if (text.isEmpty) return;
+      if (text.contains('=')) {
+        text = text.split('=')[0].trim();
+      }
+      final parts = text.split('+').map((s) => s.trim()).where((s) => s.isNotEmpty);
+      if (parts.length > 1) {
+        double sum = 0;
+        bool valid = true;
+        for (var part in parts) {
+          final d = double.tryParse(part);
+          if (d != null) {
+            sum += d;
+          } else {
+            valid = false;
+            break;
+          }
+        }
+        if (valid) {
+          final sumStr = sum % 1 == 0 ? sum.toInt().toString() : sum.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+          controller.text = '$text=$sumStr';
+          controller.selection = TextSelection.collapsed(offset: controller.text.length);
+          return;
+        }
+      }
+      if (!text.endsWith('=')) {
+        controller.text = '$text=';
+        controller.selection = TextSelection.collapsed(offset: controller.text.length);
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.text,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: Colors.white70),
+          enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.white24), borderRadius: BorderRadius.circular(8)),
+          focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.redAccent), borderRadius: BorderRadius.circular(8)),
+          filled: true,
+          fillColor: const Color(0xFF2C2C2C),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                  ),
+                  child: const Text('+', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+                tooltip: 'Add (+)',
+                onPressed: insertPlus,
+              ),
+              IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.greenAccent.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.greenAccent.withOpacity(0.5)),
+                  ),
+                  child: const Text('=', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+                tooltip: 'Calculate (=)',
+                onPressed: calculateAndInsertEquals,
+              ),
+              const SizedBox(width: 4),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _selectTime(BuildContext context, TimeOfDay? initialTime, Function(TimeOfDay) onSelected) async {
     final TimeOfDay? picked = await _showRollingTimePicker(
       context,
@@ -400,18 +498,39 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
                   children: [
                     _buildTextField('റിപ്പോർട്ട് നമ്പർ', _reportNumberCtrl),
                     _buildTextField('സ്ഥലം', _locationCtrl),
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedOfficerInChargeId,
-                      dropdownColor: const Color(0xFF2C2C2C),
-                      decoration: InputDecoration(
-                        labelText: 'ചുമതല വഹിച്ച ഉദ്യോഗസ്ഥൻ',
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.white24), borderRadius: BorderRadius.circular(8)),
-                        filled: true,
-                        fillColor: const Color(0xFF2C2C2C),
-                      ),
-                      items: manpowerList.map((p) => DropdownMenuItem(value: p.id, child: Text('${p.name} (${p.designation})', style: const TextStyle(color: Colors.white)))).toList(),
-                      onChanged: (v) => setState(() => _selectedOfficerInChargeId = v),
+                    Builder(
+                      builder: (context) {
+                        final allPersonnel = context.watch<ManpowerProvider>().personnelList;
+                        final Map<String, Manpower> officerMap = {};
+                        for (var p in manpowerList) {
+                          officerMap[p.id] = p;
+                        }
+                        if (_selectedOfficerInChargeId != null && _selectedOfficerInChargeId!.isNotEmpty) {
+                          if (!officerMap.containsKey(_selectedOfficerInChargeId)) {
+                            final extra = allPersonnel.where((p) => p.id == _selectedOfficerInChargeId).firstOrNull;
+                            if (extra != null) {
+                              officerMap[extra.id] = extra;
+                            }
+                          }
+                        }
+                        final officerList = officerMap.values.toList();
+                        final validOfficerInCharge = officerMap.containsKey(_selectedOfficerInChargeId) ? _selectedOfficerInChargeId : null;
+
+                        return DropdownButtonFormField<String>(
+                          key: ValueKey(validOfficerInCharge),
+                          initialValue: validOfficerInCharge,
+                          dropdownColor: const Color(0xFF2C2C2C),
+                          decoration: InputDecoration(
+                            labelText: 'ചുമതല വഹിച്ച ഉദ്യോഗസ്ഥൻ',
+                            labelStyle: const TextStyle(color: Colors.white70),
+                            enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.white24), borderRadius: BorderRadius.circular(8)),
+                            filled: true,
+                            fillColor: const Color(0xFF2C2C2C),
+                          ),
+                          items: officerList.map((p) => DropdownMenuItem(value: p.id, child: Text('${p.name} (${p.designation})', style: const TextStyle(color: Colors.white)))).toList(),
+                          onChanged: (v) => setState(() => _selectedOfficerInChargeId = v),
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     ListTile(
@@ -448,6 +567,7 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12.0),
                       child: DropdownButtonFormField<String>(
+                        key: ValueKey(_actualFireTime == null ? 'വ്യക്തമല്ല' : 'Enter time'),
                         initialValue: _actualFireTime == null ? 'വ്യക്തമല്ല' : 'Enter time',
                         dropdownColor: const Color(0xFF2C2C2C),
                         decoration: InputDecoration(
@@ -480,7 +600,7 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
                     ),
                     if (_actualFireTime != null)
                       _buildTimeSelector('തിരഞ്ഞെടുത്ത സമയം', _actualFireTime, (t) => _actualFireTime = t),
-                    _buildTextField('സ്റ്റേഷനിൽ നിന്ന് സംഭവസ്ഥലത്തേക്കുള്ള ദൂരം (കി. മീ)', _distanceCtrl, type: TextInputType.number),
+                    _buildDistanceField('സ്റ്റേഷനിൽ നിന്ന് സംഭവസ്ഥലത്തേക്കുള്ള ദൂരം (കി. മീ)', _distanceCtrl),
                   ],
                 ),
                 isActive: _currentStep >= 1,
@@ -491,7 +611,8 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
                   children: [
                     _buildTextField('ഉൾപ്പെട്ട വസ്തുക്കൾ', _propertiesInvolvedCtrl, maxLines: 3),
                     DropdownButtonFormField<String>(
-                      initialValue: _typeOfFire,
+                      key: ValueKey(const ['ഗുരുതരം', 'മാധ്യമം', 'ചെറുത്'].contains(_typeOfFire) ? _typeOfFire : 'ചെറുത്'),
+                      initialValue: const ['ഗുരുതരം', 'മാധ്യമം', 'ചെറുത്'].contains(_typeOfFire) ? _typeOfFire : 'ചെറുത്',
                       dropdownColor: const Color(0xFF2C2C2C),
                       decoration: InputDecoration(
                         labelText: 'തീപിടുത്തത്തിന്റെ തരം',
@@ -505,7 +626,7 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
                         DropdownMenuItem(value: 'മാധ്യമം', child: Text('മാധ്യമം', style: TextStyle(color: Colors.white))),
                         DropdownMenuItem(value: 'ചെറുത്', child: Text('ചെറുത്', style: TextStyle(color: Colors.white))),
                       ],
-                      onChanged: (v) => setState(() => _typeOfFire = v!),
+                      onChanged: (v) => setState(() => _typeOfFire = v ?? 'ചെറുത്'),
                     ),
                     const SizedBox(height: 12),
                     _buildTextField('തീയുടെ വ്യാപ്തി', _extentOfFireCtrl),
@@ -575,18 +696,39 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
                   children: [
                     const Text('അവസാന സംഭവസ്ഥല വിലയിരുത്തൽ ആഫീസർ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedAssessingOfficerId,
-                      dropdownColor: const Color(0xFF2C2C2C),
-                      decoration: InputDecoration(
-                        labelText: 'വിലയിരുത്തൽ ആഫീസർ',
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.white24), borderRadius: BorderRadius.circular(8)),
-                        filled: true,
-                        fillColor: const Color(0xFF2C2C2C),
-                      ),
-                      items: manpowerList.map((p) => DropdownMenuItem(value: p.id, child: Text('${p.name} (${p.designation})', style: const TextStyle(color: Colors.white)))).toList(),
-                      onChanged: (v) => setState(() => _selectedAssessingOfficerId = v),
+                    Builder(
+                      builder: (context) {
+                        final allPersonnel = context.watch<ManpowerProvider>().personnelList;
+                        final Map<String, Manpower> officerMap = {};
+                        for (var p in manpowerList) {
+                          officerMap[p.id] = p;
+                        }
+                        if (_selectedAssessingOfficerId != null && _selectedAssessingOfficerId!.isNotEmpty) {
+                          if (!officerMap.containsKey(_selectedAssessingOfficerId)) {
+                            final extra = allPersonnel.where((p) => p.id == _selectedAssessingOfficerId).firstOrNull;
+                            if (extra != null) {
+                              officerMap[extra.id] = extra;
+                            }
+                          }
+                        }
+                        final officerList = officerMap.values.toList();
+                        final validAssessingOfficer = officerMap.containsKey(_selectedAssessingOfficerId) ? _selectedAssessingOfficerId : null;
+
+                        return DropdownButtonFormField<String>(
+                          key: ValueKey(validAssessingOfficer),
+                          initialValue: validAssessingOfficer,
+                          dropdownColor: const Color(0xFF2C2C2C),
+                          decoration: InputDecoration(
+                            labelText: 'വിലയിരുത്തൽ ആഫീസർ',
+                            labelStyle: const TextStyle(color: Colors.white70),
+                            enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.white24), borderRadius: BorderRadius.circular(8)),
+                            filled: true,
+                            fillColor: const Color(0xFF2C2C2C),
+                          ),
+                          items: officerList.map((p) => DropdownMenuItem(value: p.id, child: Text('${p.name} (${p.designation})', style: const TextStyle(color: Colors.white)))).toList(),
+                          onChanged: (v) => setState(() => _selectedAssessingOfficerId = v),
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     ListTile(
@@ -861,7 +1003,10 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<VehicleModel>(
-                      initialValue: selectedVehicle,
+                      key: ValueKey((selectedVehicle != null && vehicleList.any((v) => v.id == selectedVehicle?.id)) ? selectedVehicle!.id : null),
+                      initialValue: (selectedVehicle != null && vehicleList.any((v) => v.id == selectedVehicle?.id))
+                          ? vehicleList.firstWhere((v) => v.id == selectedVehicle?.id)
+                          : null,
                       dropdownColor: const Color(0xFF2C2C2C),
                       decoration: const InputDecoration(labelText: 'Select Vehicle', labelStyle: TextStyle(color: Colors.white70)),
                       items: vehicleList.map((v) => DropdownMenuItem(value: v, child: Text('${v.type} - ${v.regNumber}', style: const TextStyle(color: Colors.white)))).toList(),
@@ -909,7 +1054,74 @@ class _FireReportFormScreenState extends State<FireReportFormScreen> {
                         if (t != null) setDialogState(() => timeIn = t);
                       },
                     ),
-                    TextField(controller: distanceCtrl, decoration: const InputDecoration(labelText: 'Distance (KM)', labelStyle: TextStyle(color: Colors.white70)), style: const TextStyle(color: Colors.white), keyboardType: TextInputType.number),
+                    TextField(
+                      controller: distanceCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Distance (KM)',
+                        labelStyle: const TextStyle(color: Colors.white70),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                                ),
+                                child: const Text('+', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+                              ),
+                              tooltip: 'Add (+)',
+                              onPressed: () {
+                                final t = distanceCtrl.text;
+                                distanceCtrl.text = '$t+';
+                                distanceCtrl.selection = TextSelection.collapsed(offset: distanceCtrl.text.length);
+                              },
+                            ),
+                            IconButton(
+                              icon: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.greenAccent.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.greenAccent.withOpacity(0.5)),
+                                ),
+                                child: const Text('=', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+                              ),
+                              tooltip: 'Calculate (=)',
+                              onPressed: () {
+                                String text = distanceCtrl.text.trim().replaceAll(',', '+');
+                                if (text.isEmpty) return;
+                                if (text.contains('=')) text = text.split('=')[0].trim();
+                                final parts = text.split('+').map((s) => s.trim()).where((s) => s.isNotEmpty);
+                                if (parts.length > 1) {
+                                  double sum = 0;
+                                  bool valid = true;
+                                  for (var part in parts) {
+                                    final d = double.tryParse(part);
+                                    if (d != null) sum += d; else { valid = false; break; }
+                                  }
+                                  if (valid) {
+                                    final sumStr = sum % 1 == 0 ? sum.toInt().toString() : sum.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+                                    distanceCtrl.text = '$text=$sumStr';
+                                    distanceCtrl.selection = TextSelection.collapsed(offset: distanceCtrl.text.length);
+                                    return;
+                                  }
+                                }
+                                if (!text.endsWith('=')) {
+                                  distanceCtrl.text = '$text=';
+                                  distanceCtrl.selection = TextSelection.collapsed(offset: distanceCtrl.text.length);
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                        ),
+                      ),
+                      style: const TextStyle(color: Colors.white),
+                      keyboardType: TextInputType.text,
+                    ),
                     TextField(controller: pumpWorkedCtrl, decoration: const InputDecoration(labelText: 'Pump Worked Time', labelStyle: TextStyle(color: Colors.white70)), style: const TextStyle(color: Colors.white)),
                   ],
                 ),

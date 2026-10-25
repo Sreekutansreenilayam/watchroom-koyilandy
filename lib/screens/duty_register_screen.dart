@@ -380,7 +380,9 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
         _initOrUpdateControllers(_vehicles);
 
         _phoneDutyIds = List.from(existingRegister.phoneDutyIds);
-        _messengerIds = List.from(existingRegister.messengerIds);
+        bool isSundayOr2Sat = date.weekday == DateTime.sunday ||
+            (date.weekday == DateTime.saturday && date.day >= 8 && date.day <= 14);
+        _messengerIds = isSundayOr2Sat ? [] : List.from(existingRegister.messengerIds);
         _sentryDutyIds = List.from(existingRegister.sentryDutyIds);
         _controlRoomIds = List.from(existingRegister.controlRoomIds);
       });
@@ -1145,7 +1147,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
       
       if (num < 100) return num + 200000; // 1 or 2-digit numbers are most junior
       if (num < 1000) return num + 100000; // 3-digit numbers are junior (probation)
-      if (digits.startsWith('10')) return num + 50000; // 4-digit numbers starting with 10 are temporary/junior
+      if (digits.startsWith('1')) return num + 50000; // 4-digit numbers starting with 1 (e.g. 1004, 1120, 1208) are temporary/junior
       
       return num; // Normal 4-digit numbers (like 6015, 7112) are senior
     }
@@ -1836,18 +1838,26 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
       khgTorch = List.from(khg9874);
 
       // 7. Messenger: Selected by rotation from H/Gs posted to Bullet or Ambulance
-      List<String> messengerCandidates = [...khgBullet, ...khgAmb].toSet().toList();
-      if (messengerCandidates.isNotEmpty) {
-        final messengerPool = allKhg.where((p) => messengerCandidates.contains(p.idNumber)).toList();
-        if (messengerPool.isNotEmpty) {
-          String picked = pickForDuty(messengerPool, 'Messenger');
-          if (picked.isNotEmpty) {
-            _messengerIds = [picked];
-            if ((assignmentsToday[picked] ?? 0) > 0) {
-              assignmentsToday[picked] = assignmentsToday[picked]! - 1;
+      // Excluded on Sundays and Second Saturdays
+      bool isSunday = _selectedDate.weekday == DateTime.sunday;
+      bool isSecondSaturday = _selectedDate.weekday == DateTime.saturday && _selectedDate.day >= 8 && _selectedDate.day <= 14;
+
+      if (!isSunday && !isSecondSaturday) {
+        List<String> messengerCandidates = [...khgBullet, ...khgAmb].toSet().toList();
+        if (messengerCandidates.isNotEmpty) {
+          final messengerPool = allKhg.where((p) => messengerCandidates.contains(p.idNumber)).toList();
+          if (messengerPool.isNotEmpty) {
+            String picked = pickForDuty(messengerPool, 'Messenger');
+            if (picked.isNotEmpty) {
+              _messengerIds = [picked];
+              if ((assignmentsToday[picked] ?? 0) > 0) {
+                assignmentsToday[picked] = assignmentsToday[picked]! - 1;
+              }
             }
           }
         }
+      } else {
+        _messengerIds = [];
       }
 
       // --- SFRO ASSIGNMENT ---
@@ -2266,7 +2276,7 @@ class _DutyRegisterScreenState extends State<DutyRegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildManualSelectionBlock(
-                  'Messenger Personnel',
+                  'Messenger Personnel${(_selectedDate.weekday == DateTime.sunday || (_selectedDate.weekday == DateTime.saturday && _selectedDate.day >= 8 && _selectedDate.day <= 14)) ? ' (Not applicable on Sundays / 2nd Saturdays)' : ''}',
                   _messengerIds,
                   (selected) => setState(() => _messengerIds = selected),
                   customList: _getOtherDutiesPersonnel(includeSfroM: false),

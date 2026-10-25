@@ -289,6 +289,57 @@ class FireReportPdfGenerator {
     final officers = allAttendees.where((p) => p.designation == 'STO' || p.designation == 'ASTO').toList();
     final personnel = allAttendees.where((p) => p.designation != 'STO' && p.designation != 'ASTO').toList();
 
+    int getPersonnelRank(String desig) {
+      final d = desig.replaceAll(' ', '').toUpperCase();
+      if (d == 'SFRO') return 1;
+      if (d == 'SFRO(M)') return 2;
+      if (d == 'FRO(D)') return 3;
+      if (d == 'FRO') return 4;
+      if (d == 'KHG') return 5;
+      return 6;
+    }
+
+    int getSeniorityNum(String idNumber) {
+      final match = RegExp(r'\d+').firstMatch(idNumber);
+      if (match != null) {
+        String digits = match.group(0)!;
+        int num = int.parse(digits);
+        if (num < 100) return num + 200000;
+        if (num < 1000) return num + 100000;
+        if (digits.startsWith('1')) return num + 50000;
+        return num;
+      }
+      return 999999;
+    }
+
+    String extractNumberOnly(String id) {
+      final match = RegExp(r'\d+').firstMatch(id);
+      return match != null ? match.group(0)! : id;
+    }
+
+    int getOfficerRank(String desig) {
+      final d = desig.replaceAll(' ', '').toUpperCase();
+      if (d == 'STO') return 1;
+      if (d == 'ASTO') return 2;
+      return 3;
+    }
+
+    officers.sort((a, b) {
+      int rA = getOfficerRank(a.designation);
+      int rB = getOfficerRank(b.designation);
+      if (rA != rB) return rA.compareTo(rB);
+      if (a.sortOrder != b.sortOrder) return a.sortOrder.compareTo(b.sortOrder);
+      return a.name.compareTo(b.name);
+    });
+
+    personnel.sort((a, b) {
+      int rA = getPersonnelRank(a.designation);
+      int rB = getPersonnelRank(b.designation);
+      if (rA != rB) return rA.compareTo(rB);
+      if (a.sortOrder != b.sortOrder) return a.sortOrder.compareTo(b.sortOrder);
+      return getSeniorityNum(a.idNumber).compareTo(getSeniorityNum(b.idNumber));
+    });
+
     int numOfficers = officers.length;
     int numPersonnel = personnel.length;
     int maxRows = numOfficers > numPersonnel ? numOfficers : numPersonnel;
@@ -333,7 +384,7 @@ class FireReportPdfGenerator {
         final p = personnel[i];
         personnelRows.add(TableRow(children: [
           Padding(padding: const EdgeInsets.all(4), child: Text(p.designation, style: const TextStyle(fontSize: 10))),
-          Padding(padding: const EdgeInsets.all(4), child: Text(p.idNumber, style: const TextStyle(fontSize: 10))),
+          Padding(padding: const EdgeInsets.all(4), child: Text(extractNumberOnly(p.idNumber), style: const TextStyle(fontSize: 10))),
           Padding(padding: const EdgeInsets.all(4), child: Text(p.name, style: const TextStyle(fontSize: 10))),
         ]));
       } else {
