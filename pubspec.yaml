@@ -2,7 +2,7 @@ name: watchroom
 description: "Fire and Rescue Duty Management App"
 publish_to: 'none'
 
-version: 10.1.16+11
+version: 10.1.17+12
 
 environment:
   sdk: ^3.11.5
@@ -11,9 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  firebase_core: ^4.11.0
-  firebase_auth: ^6.5.3
-  cloud_firestore: ^6.6.0
+  firebase_core: ^4.15.2
+  firebase_auth: ^6.7.1
+  cloud_firestore: ^6.10.2
   provider: ^6.1.5+1
   google_fonts: ^8.1.0
   intl: ^0.20.2
